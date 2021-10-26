@@ -6,6 +6,21 @@ The hardware is a FT232H from Adafruit and a Si7021 sensor. The FT232H is a pain
 
 Adafruit has written a guide for the FT232H, but it is confusing and becoming out of date: https://learn.adafruit.com/circuitpython-on-any-computer-with-ft232h
 
-Requires Python 3
+Requires:
+Python 3
+pip
+pyftdi
+pyserial
+pyusb
+Adafruit-Blinka
+adafruit-circuitpython-busdevice
+adafruit-circuitpython-si7021
+Adafruit-PlatformDetect
+Adafruit-PureIO
+requests
+charset_normalizer
+certifi
+urllib3
+idna
 
 At one point it created RRD graphs and updated a local website, but that feature is currently broken.
