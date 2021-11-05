@@ -31,7 +31,7 @@ Adafruit has written a guide for the FT232H, but it is confusing and becoming ou
 $ rrdtool create temperatures-c.rrd --step 60 DS:outdoor:GAUGE:120:0:55 DS:indoor:GAUGE:120:0:55 RRA:MAX:0.5:1:1440
 $ rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:GAUGE:120:0:100 RRA:MAX:0.5:1:1440
 ```
-This will create databases with a 60 second interval, 120 second hearbeat timeout, between 0 and 55 degrees Celsius, and 0-100% relative humidity, with 24 hours of data before rolling over. You may need to configure for lower than 0 degrees Celsius, but I live in the second hottest place on the planet so these are my settings.
+This will create databases with a 60 second interval, 120 second heartbeat timeout, between 0 and 55 degrees Celsius, and 0-100% relative humidity, with 24 hours of data before rolling over. You may need to configure for lower than 0 degrees Celsius, but I live in the second hottest place on the planet so these are my settings.
 
 More information here: https://michael.bouvy.net/post/graph-data-rrdtool-sensors-arduino
 
