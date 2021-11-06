@@ -45,15 +45,39 @@ while True:
     print("Done")
 
     print("\nCreating graphs...")
-    subprocess.run(["rrdtool", "graph","temperatures.png", "--font", "DEFAULT:10:", "--title", "Temperature",
-     "--vertical-label", "Celsius", "--right-axis-label", "Fahrenheit", "--right-axis", "1.8:32",
-     "DEF:outdoor=temperatures-c.rrd:outdoor:MAX", "DEF:indoor=temperatures-c.rrd:indoor:MAX",
-     "LINE1:outdoor#ff0000:Outdoor", "LINE1:indoor#0000ff:Indoor", "--width", "600", "--height", "220",
-     "--alt-autoscale"])
-    subprocess.run(["rrdtool", "graph", "humidities.png", "--font", "DEFAULT:10:", "--title", "Humidity",
-     "--vertical-label", "Relative (%)", "DEF:outdoor=humidities.rrd:outdoor:MAX", "DEF:indoor=humidities.rrd:indoor:MAX",
-     "LINE1:outdoor#ff0000:Outdoor", "LINE1:indoor#0000ff:Indoor", "--width", "600", "--height", "200",
-     "--alt-autoscale"])
+    subprocess.run([
+     "rrdtool", "graph",
+     "temperatures.png",
+     "--font", "DEFAULT:10:",
+     "--title", "Temperature",
+     "--vertical-label", "Celsius",
+     "--right-axis-label", "Fahrenheit",
+     "--right-axis", "1.8:32",
+     "--width", "600", "--height", "220",
+     "--alt-autoscale",
+     "DEF:outdoor=temperatures-c.rrd:outdoor:MAX",
+     "DEF:indoor=temperatures-c.rrd:indoor:MAX",
+     "LINE1:outdoor#ff0000:Outdoor",
+     "GPRINT:outdoor:LAST:%2.1lf °C",
+     "CDEF:outdoor-f=outdoor,1.8,*,32,+", "GPRINT:outdoor-f:LAST:%2.1lf °F",
+     "LINE1:indoor#0000ff:Indoor",
+     "GPRINT:indoor:LAST:%2.1lf °C",
+     "CDEF:indoor-f=indoor,1.8,*,32,+", "GPRINT:indoor-f:LAST:%2.1lf °F"])
+    subprocess.run([
+     "rrdtool", "graph",
+     "humidities.png",
+     "--font", "DEFAULT:10:",
+     "--title", "Humidity",
+     "--vertical-label", "Relative (%)",
+     "--right-axis", "1:0",
+     "--width", "600", "--height", "200",
+     "--alt-autoscale",
+     "DEF:outdoor=humidities.rrd:outdoor:MAX",
+     "DEF:indoor=humidities.rrd:indoor:MAX",
+     "LINE1:outdoor#ff0000:Outdoor",
+     "GPRINT:outdoor:LAST:%2.1lf%%",
+     "LINE1:indoor#0000ff:Indoor",
+     "GPRINT:indoor:LAST:%2.1lf%%"])
     print("Done")
 
     time.sleep(60)
