@@ -1,0 +1,7 @@
+*.txt
+archive
+FT232H/generated files
+FT232H/learning
+FT232H/old
+FT232H/reefer-private.py
+pi/reefer-private.py
