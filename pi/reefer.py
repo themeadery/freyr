@@ -80,9 +80,6 @@ while True:
         print(err)
 
     print("\nIndoor")
-    # indoor_c = sensor.temperature - 1.8 # Sensor error correction
-    # indoor_f = c_to_f(indoor_c)
-    # indoor_hum = sensor.relative_humidity
     indoor_c, indoor_f, indoor_hum = indoor_temp_hum()
     print(f"Temperature: {indoor_c:.2f} °C | {indoor_f:.2f} °F")
     print(f"Humidity: {indoor_hum:.1f}%")
@@ -96,10 +93,6 @@ while True:
     print(f"CPU: {pi_temp_c:.2f} °C | {pi_temp_f:.2f} °F")
 
     print("\nUpdating RRD databases...")
-    # Debug
-    # print(f"Debug rrdtool temperature string N:{outdoor_c}:{indoor_c}:{tank_c}")
-    # print(f"Debug rrdtool humidity string N:{outdoor_hum}:{indoor_hum}")
-    #
     subprocess.run(["rrdtool", "updatev", "temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{tank_c}:{pi_temp_c}"])
     subprocess.run(["rrdtool", "updatev", "humidities.rrd", f"N:{outdoor_hum}:{indoor_hum}"])
     print("Done")
@@ -113,7 +106,7 @@ while True:
      "--vertical-label", "Celsius",
      "--right-axis-label", "Fahrenheit",
      "--right-axis", "1.8:32",
-     "--width", "600", "--height", "220",
+     "--width", "750", "--height", "320",
      "--alt-autoscale",
      "DEF:outdoor=temperatures.rrd:outdoor:MAX",
      "DEF:indoor=temperatures.rrd:indoor:MAX",
@@ -135,7 +128,7 @@ while True:
      "--title", "Humidity",
      "--vertical-label", "Relative (%)",
      "--right-axis", "1:0",
-     "--width", "600", "--height", "160",
+     "--width", "750", "--height", "200",
      "--alt-autoscale",
      "DEF:outdoor=humidities.rrd:outdoor:MAX",
      "DEF:indoor=humidities.rrd:indoor:MAX",
@@ -152,8 +145,7 @@ while True:
       "--vertical-label", "Celsius",
       "--right-axis-label", "Fahrenheit",
       "--right-axis", "1.8:32",
-      "--width", "600", "--height", "140",
-      # "--alt-autoscale",
+      "--width", "750", "--height", "100",
       "DEF:pi=temperatures.rrd:pi:MAX",
       "LINE1:pi#ff0000:CPU",
       "GPRINT:pi:LAST:%2.1lf °C",
