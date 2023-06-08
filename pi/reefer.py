@@ -119,9 +119,27 @@ while True:
     logging.info(f"CPU: {pi_temp_c:.2f} °C | {pi_temp_f:.2f} °F")
 
     logging.info("Updating RRD databases...")
-    subprocess.run(["rrdtool", "updatev", "temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{tank_c}:{pi_temp_c}"])
-    subprocess.run(["rrdtool", "updatev", "humidities.rrd", f"N:{outdoor_hum}:{indoor_hum}"])
-    subprocess.run(["rrdtool", "updatev", "pressures.rrd", f"N:{outdoor_pressure}"])
+    result = subprocess.run(["rrdtool", "updatev", "temperatures.rrd",
+     f"N:{outdoor_c}:{indoor_c}:{tank_c}:{pi_temp_c}"
+     ], capture_output=True, text=True)
+    logging.info(f'return code: {result.returncode}')
+    logging.info(f'{result.stdout}')
+    logging.error(f'errors: {result.stderr}')
+    
+    subprocess.run(["rrdtool", "updatev", "humidities.rrd",
+     f"N:{outdoor_hum}:{indoor_hum}"
+     ], capture_output=True, text=True)
+    logging.info(f'return code: {result.returncode}')
+    logging.info(f'{result.stdout}')
+    logging.error(f'errors: {result.stderr}')
+    
+    subprocess.run(["rrdtool", "updatev", "pressures.rrd",
+     f"N:{outdoor_pressure}"
+     ], capture_output=True, text=True)
+    logging.info(f'return code: {result.returncode}')
+    logging.info(f'{result.stdout}')
+    logging.error(f'errors: {result.stderr}')
+    
     logging.info("Done")
 
     logging.info("Creating graphs...")
