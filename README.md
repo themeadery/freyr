@@ -86,8 +86,9 @@ I2C and 1-Wire interfaces must be turned on in ```$ sudo raspi-config```
 ```
 $ rrdtool create temperatures.rrd --step 60 DS:outdoor:GAUGE:120:0:55 DS:indoor:GAUGE:120:0:55 DS:tank:GAUGE:120:0:55 DS:pi:GAUGE:120:0:100 RA:MAX:0.5:1:1440
 $ rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:GAUGE:120:0:100 RRA:MAX:0.5:1:1440
+$ rrdtool create pressures.rrd --step 60 DS:outdoor:GAUGE:120:800:1100 RRA:MAX:0.5:1:1440
 ```
-This will create databases with a 60 second interval, 120 second heartbeat timeout, between 0 and 55 degrees Celsius for the air/water sensors, 0-100 degrees Celsius for the pi CPU sensor, and 0-100% relative humidity, with 24 hours of data before rolling over. You may need to configure for lower than 0 degrees Celsius, but I live in the second hottest place on the planet so these are my settings.
+This will create databases with a 60 second interval, 120 second heartbeat timeout, between 0 and 55 degrees Celsius for the air/water sensors, 0-100 degrees Celsius for the pi CPU sensor, 0-100% relative humidity, and 800-1100 hPa pressure with 24 hours of data before rolling over. You may need to configure for lower than 0 degrees Celsius, but I live in the second hottest place on the planet so these are my settings.
 
 More information here: https://michael.bouvy.net/post/graph-data-rrdtool-sensors-arduino
 
