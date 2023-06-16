@@ -110,4 +110,14 @@ There are 3 python files to control a relay on the Pi GPIO pins. You can use thi
 
 I used ```relay.py``` for a while, but there's no need to have a constantly running python daemon just to flip a GPIO pin twice a day. I switched to a crontab schedule using the first two mentioned python scripts.
 
+Use the example below to turn a light on at 7:00 AM and off at 7:00 PM:
 
+```
+$ crontab -e
+```
+
+```
+# m h  dom mon dow   command
+0 7 * * * python3 /home/pi/relayOn.py
+0 19 * * * python3 /home/pi/relayOff.py
+```
