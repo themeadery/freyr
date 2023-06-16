@@ -97,3 +97,17 @@ More information here: https://michael.bouvy.net/post/graph-data-rrdtool-sensors
 ```index.html```
 
 Very simple HTML to display the graphs. You will likely want a webserver for this. I use nginx. It refreshes the page every 60 seconds. Sometimes this generates a miss while the PNG files are being generated.
+
+### Relay
+
+There are 3 python files to control a relay on the Pi GPIO pins. You can use this as a timer for lights, pumps, etc.
+
+```relayOn.py``` Simply turns on the relay
+
+```relayOff.py``` Simply turns off the relay
+
+```relay.py``` Toggles the relay based on a schedule
+
+I used ```relay.py``` for a while, but there's no need to have a constantly running python daemon just to flip a GPIO pin twice a day. I switched to a crontab schedule using the first two mentioned python scripts.
+
+

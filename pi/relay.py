@@ -12,4 +12,3 @@ while True:
         GPIO.output(17, 0)
     time.sleep(60)
 
-GPIO.cleanup()
