@@ -8,8 +8,8 @@ import vcgencmd
 import logging
 
 # Set up logging
-logging.basicConfig(filename='reefer.log')
-logging.root.setLevel(logging.DEBUG)
+logging.basicConfig(filename='reefer.log', format='%(asctime)s - %(levelname)s - %(message)s')
+logging.root.setLevel(logging.WARNING)
 
 # OpenWeather API
 query = {'lat':'put your latitude here', 'lon':'put your longitude here', 'appid':'put your API key here'}
@@ -119,26 +119,30 @@ while True:
     logging.info(f"CPU: {pi_temp_c:.2f} °C | {pi_temp_f:.2f} °F")
 
     logging.info("Updating RRD databases...")
+
     result = subprocess.run(["rrdtool", "updatev", "temperatures.rrd",
      f"N:{outdoor_c}:{indoor_c}:{tank_c}:{pi_temp_c}"
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
-    logging.error(f'errors: {result.stderr}')
+    if result.stderr:
+        logging.error(f'errors: {result.stderr}')
     
-    subprocess.run(["rrdtool", "updatev", "humidities.rrd",
+    result = subprocess.run(["rrdtool", "updatev", "humidities.rrd",
      f"N:{outdoor_hum}:{indoor_hum}"
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
-    logging.error(f'errors: {result.stderr}')
+    if result.stderr:
+        logging.error(f'errors: {result.stderr}')
     
-    subprocess.run(["rrdtool", "updatev", "pressures.rrd",
+    result = subprocess.run(["rrdtool", "updatev", "pressures.rrd",
      f"N:{outdoor_pressure}"
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
-    logging.error(f'errors: {result.stderr}')
+    if result.stderr:
+        logging.error(f'errors: {result.stderr}')
     
     logging.info("Done")
 
@@ -179,7 +183,8 @@ while True:
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
-    logging.error(f'errors: {result.stderr}')
+    if result.stderr:
+        logging.error(f'errors: {result.stderr}')
 
     result = subprocess.run([
      "rrdtool", "graph",
@@ -209,7 +214,8 @@ while True:
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
-    logging.error(f'errors: {result.stderr}')
+    if result.stderr:
+        logging.error(f'errors: {result.stderr}')
     
     result = subprocess.run([
       "rrdtool", "graph",
@@ -241,7 +247,8 @@ while True:
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
-    logging.error(f'errors: {result.stderr}')
+    if result.stderr:
+        logging.error(f'errors: {result.stderr}')
     
     result = subprocess.run([
       "rrdtool", "graph",
@@ -268,7 +275,8 @@ while True:
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
-    logging.error(f'errors: {result.stderr}')
+    if result.stderr:
+        logging.error(f'errors: {result.stderr}')
     
     logging.info("Done")
 
