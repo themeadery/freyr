@@ -1,4 +1,6 @@
 import time
+from datetime import datetime
+from datetime import timedelta
 import glob
 import board
 import adafruit_si7021
@@ -6,6 +8,10 @@ import requests
 import subprocess
 import vcgencmd
 import logging
+
+# Loop interval
+interval = 60 # in seconds
+interval = timedelta(seconds=interval) # Convert integer into proper time format
 
 # Set up logging
 logging.basicConfig(filename='reefer.log', format='%(asctime)s - %(levelname)s - %(message)s')
@@ -64,6 +70,7 @@ def pi_temp():
 
 # Main Loop
 while True:
+    started = datetime.now() # Start timing the operation
     #logging.info("--------------------------------")
     logging.info("Outdoor")
     try:
@@ -280,4 +287,12 @@ while True:
     
     logging.info("Done")
 
-    time.sleep(60)
+    ended = datetime.now() # Stop timing the operation
+    # Compute the amount of time it took to run the loop above
+    # and sleep if it is less than the configured loop interval
+    # Sleep for the remaining time left
+    if started and ended and ended - started < interval:
+        logging.info("Sleeping...")
+        time.sleep((interval - (ended - started)).seconds)
+
+    #time.sleep(60)

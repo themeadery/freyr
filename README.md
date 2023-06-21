@@ -1,5 +1,11 @@
 # reefer
 
+tl;dr Yeah, but what does it look like?
+
+![screenshot](screenshot.png)
+
+Please excuse the erratic graphs from development. I will update when the graphs stabilize.
+
 This started out as a project to control my reef aquarium, hence the name. It then morphed into a simple Python script to check the indoor temp/humidity and compare it with the outdoors using OpenWeather API. Update: It now monitors the temperature of my aquarium!
 
 Note: This project is now split into a FT232H version and a Raspberry Pi version. Updated 11/11/2021
@@ -72,10 +78,12 @@ According to my testing, Google searches, and the DS18B20 datasheet 3v3 is not e
 
 You can satisfy pretty much all dependencies with these commands on a fresh Pi:
 ```
+$ sudo apt install git
+$ sudo apt install nginx
 $ sudo apt install rrdtool
 $ sudo apt install python3-pip
-$ sudo pip3 install adafruit-circuitpython-si7021
-$ sudo pip3 install git+https://github.com/nicmcd/vcgencmd.git
+$ sudo pip install adafruit-circuitpython-si7021
+$ sudo pip install git+https://github.com/nicmcd/vcgencmd.git
 ```
 
 I2C and 1-Wire interfaces must be turned on in ```$ sudo raspi-config```
