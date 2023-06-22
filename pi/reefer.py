@@ -97,6 +97,11 @@ while True:
     # Get barometric pressure from AWC METAR because it is more accurate than OpenWeather
     try:
         responseAWC = requests.get('https://beta.aviationweather.gov/cgi-bin/data/metar.php', params=queryAWC, timeout=5)
+        # If the above command takes a long time (10+ seconds) you have an ipv6 routing/DNS error
+        # This error was introduced somewhere between Python 3.7 and 3.9 or Raspbian Bullseye
+        # The Python devs and the Requests Library devs have failed to merge proposed patches
+        # Disable ipv6 temporarily by running "sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1"
+        # If faster, look into a more permanent way to disable/fix ipv6 as the above is not persistent across reboots
         responseAWC.raise_for_status()
         # Code below here will only run if the request is successful
         index0 = responseAWC.json()[0]
@@ -289,8 +294,8 @@ while True:
 
     ended = datetime.now() # Stop timing the operation
     # Compute the amount of time it took to run the loop above
-    # and sleep if it is less than the configured loop interval
-    # Sleep for the remaining time left
+    # then sleep for the remaining time left
+    # if it is less than the configured loop interval
     if started and ended and ended - started < interval:
         logging.info("Sleeping...")
         time.sleep((interval - (ended - started)).seconds)
