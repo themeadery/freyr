@@ -4,8 +4,6 @@ tl;dr Yeah, but what does it look like?
 
 ![screenshot](screenshot.png)
 
-Please excuse the erratic graphs from development. I will update when the graphs stabilize.
-
 This started out as a project to control my reef aquarium, hence the name. It then morphed into a simple Python script to check the indoor temp/humidity and compare it with the outdoors using OpenWeather API. Update: It now monitors the temperature of my aquarium!
 
 Note: This project is now split into a FT232H version and a Raspberry Pi version. Updated 11/11/2021
