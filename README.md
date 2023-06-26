@@ -76,10 +76,7 @@ According to my testing, Google searches, and the DS18B20 datasheet 3v3 is not e
 
 You can satisfy pretty much all dependencies with these commands on a fresh Pi:
 ```
-$ sudo apt install git
-$ sudo apt install nginx
-$ sudo apt install rrdtool
-$ sudo apt install python3-pip
+$ sudo apt install git nginx rrdtool python3-pip
 $ sudo pip install adafruit-circuitpython-si7021
 $ sudo pip install git+https://github.com/nicmcd/vcgencmd.git
 ```
@@ -124,6 +121,15 @@ $ crontab -e
 
 ```
 # m h  dom mon dow   command
-0 7 * * * python3 /home/pi/relayOn.py
-0 19 * * * python3 /home/pi/relayOff.py
+0 7 * * * python /home/pi/relayOn.py
+0 19 * * * python /home/pi/relayOff.py
 ```
+
+### More Advanced Relay Control
+
+```
+$ pip install flask
+$ python relayControl.py
+```
+
+This will launch a webserver that hosts a very simple webpage with some buttons that control a relay.
