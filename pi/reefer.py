@@ -17,10 +17,13 @@ interval = timedelta(seconds=interval) # Convert integer into proper time format
 logging.basicConfig(filename='reefer.log', format='%(asctime)s - %(levelname)s - %(message)s')
 logging.root.setLevel(logging.WARNING)
 
-# OpenWeather API
-query = {'lat':'put your latitude here', 'lon':'put your longitude here', 'appid':'put your API key here'}
-# Aviation Weather Center API
-queryAWC = {'ids':'put your airport code here', 'format':'json'}
+# API query definitions
+queryOWN = {'lat':'put your lat here', 'lon':'put your lon here', 'appid':'put your API key here'} # OpenWeatherMap API
+queryAWC = {'ids':'put your airport code here', 'format':'json'} # Aviation Weather Center API
+
+# Initialize HTTP(S) request sessions for reuse during API calls
+sessionOWN = requests.Session() # OpenWeatherMap API
+sessionAWC = requests.Session() # Aviation Weather Center API
 
 # Initialize Si7021
 sensor = adafruit_si7021.SI7021(board.I2C())
@@ -71,13 +74,12 @@ def pi_temp():
 # Main Loop
 while True:
     started = datetime.now() # Start timing the operation
-    #logging.info("--------------------------------")
     logging.info("Outdoor")
     try:
-        response = requests.get('https://api.openweathermap.org/data/2.5/weather', params=query, timeout=5)
-        response.raise_for_status()
+        responseOWN = sessionOWN.get('http://api.openweathermap.org/data/2.5/weather', params=queryOWN, timeout=8) # Don't use HTTPS
+        responseOWN.raise_for_status()
         # Code below here will only run if the request is successful
-        main = response.json()['main']
+        main = responseOWN.json()['main']
         tempk = main['temp']
         outdoor_c = tempk - 273.14
         outdoor_f = c_to_f(outdoor_c)
@@ -96,7 +98,7 @@ while True:
 
     # Get barometric pressure from AWC METAR because it is more accurate than OpenWeather
     try:
-        responseAWC = requests.get('https://beta.aviationweather.gov/cgi-bin/data/metar.php', params=queryAWC, timeout=5)
+        responseAWC = sessionAWC.get('https://beta.aviationweather.gov/cgi-bin/data/metar.php', params=queryAWC, timeout=8)
         # If the above command takes a long time (10+ seconds) you have an ipv6 routing/DNS error
         # This error was introduced somewhere between Python 3.7 and 3.9 or Raspbian Bullseye
         # The Python devs and the Requests Library devs have failed to merge proposed patches

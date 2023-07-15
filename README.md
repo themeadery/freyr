@@ -132,4 +132,4 @@ $ pip install flask
 $ python relayControl.py
 ```
 
-This will launch a webserver that hosts a very simple webpage with some buttons that control a relay.
+This will launch a webserver that hosts a very simple webpage with some buttons that control a relay. This depends on relayOn.py and relayOff.py, which you can edit to your liking and of course expand everything to control more relays.
