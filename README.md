@@ -133,3 +133,41 @@ $ python relayControl.py
 ```
 
 This will launch a webserver that hosts a very simple webpage with some buttons that control a relay. This depends on relayOn.py and relayOff.py, which you can edit to your liking and of course expand everything to control more relays.
+
+### Handling Unforseen Errors
+
+I have tried to continually improve error handling inside the main ```reefer.py``` script, however there are still errors that can pop up. I am usually running the script using ```$ python reefer.py &``` or some variation thereof to background the process and/or handle stdout/stderr logging (in addition to the built-in logging), but I am still getting various crashes which are not obvious looking at the graphs (they just stop on the last data point). So there is no way of knowing the main process crashed besides waiting a while and seeing the timestamp at the extreme right of the graphs is old.
+
+The API's I am poking prove to be a continuous source of beard-pulling as I try to debug what is failing. I honestly did not expect polling of aviation METAR data from a government website to be so unreliable for example.
+
+systemd to the rescue?
+
+```
+$ mkdir -p .config/systemd/user
+$ cp reefer.service .config/systemd/user
+$ systemctl --user start reefer.service
+$ systemctl --user enable service
+$ sudo loginctl enable-linger pi
+```
+
+This should automatically restart the script if it fails in any fashion and also log it properly. Note that this service is running as the unprivileged 'pi' user. The way I have my files setup in the pi home dir and nginx makes this work for my particular setup. You could do this all as root in ```/etc/systemd/system``` if you want to do it that way and manage permissions accordingly.
+
+The ```reefer.service``` systemd unit file is very simple and included in the repo:
+
+```
+[Unit]
+Description=Reefer Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python /home/pi/reefer.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+My next move will be to upgrade to a BME680 sensor that includes pressure data so I don't have to poll an API for it. The next upgrade after that would be to put another Pi Zero 2 W/W outside with a BME680 in a white 3D printed "Stevenson screen" enclosure.
+
+I realize this is turning more into a glorified weather station app, but that's where my interests have led me!

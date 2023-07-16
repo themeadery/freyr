@@ -1,0 +1,11 @@
+[Unit]
+Description=Reefer Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python /home/pi/reefer.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
