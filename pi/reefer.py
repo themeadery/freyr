@@ -105,11 +105,18 @@ while True:
         # Disable ipv6 temporarily by running "sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1"
         # If faster, look into a more permanent way to disable/fix ipv6 as the above is not persistent across reboots
         responseAWC.raise_for_status()
-        # Code below here will only run if the request is successful
-        index0 = responseAWC.json()[0]
-        outdoor_pressure = index0['altim']
+        outdoor_pressure = 'U' # Set to RRDtool specific null value if json from API is broken
+        try:
+            index0 = responseAWC.json()[0]
+        except KeyError as errK:
+            logging.error(errK)
+        except IndexError as errI:
+            logging.error(errI)
+        except TypeError as errT:
+            logging.error(errT)
+        else:
+            outdoor_pressure = index0['altim']
         logging.info(f"Barometric Pressure: {outdoor_pressure} hPa (MSL)")
-        # Code above here will only run if the request is successful
     except requests.exceptions.HTTPError as errh:
         logging.error(errh)
     except requests.exceptions.ConnectionError as errc:
