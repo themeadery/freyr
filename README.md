@@ -171,3 +171,8 @@ WantedBy=multi-user.target
 My next move will be to upgrade to a BME680 sensor that includes pressure data so I don't have to poll an API for it. The next upgrade after that would be to put another Pi Zero 2 W/W outside with a BME680 in a white 3D printed "Stevenson screen" enclosure.
 
 I realize this is turning more into a glorified weather station app, but that's where my interests have led me!
+
+#### TODO
+
+- Move generated files to tmpfs as to not kill the sdcard with all the writes.
+- Maybe switch from nginx to built-in Python webserver to further reduce system load, configuration, writes to sdcard, etc.

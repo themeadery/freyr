@@ -214,7 +214,7 @@ while True:
      "--title", "Humidity",
      "--vertical-label", "Relative (%)",
      "--right-axis", "1:0",
-     "--width", "755", "--height", "190",
+     "--width", "755", "--height", "200",
      "--alt-autoscale",
      "--border", "0",
      "-c", "BACK#333333",
@@ -244,13 +244,14 @@ while True:
       "--font", "DEFAULT:10:",
       "--title", "Barometric Pressure (MSL)",
       "--vertical-label", "hPa",
-      "--right-axis-label", "inHg",
-      "--right-axis", "0.02953:0", "--right-axis-format", "%.2lf",
-      #"--right-axis", ":0", "--right-axis-format", "%4.0lf",
-      "--width", "750", "--height", "170",
-      #"--lower-limit", "950", "--upper-limit", "1050",
-      "--alt-autoscale",
-      "--alt-y-grid",
+      "--right-axis", "1:0", "--right-axis-format", "%4.0lf",
+      #"--right-axis-label", "inHg",
+      #"--right-axis", "0.02953:0", "--right-axis-format", "%.2lf",
+      "--width", "755", "--height", "200",
+      #"--lower-limit", "950", "--upper-limit", "1050", "--allow-shrink",
+      #"--alt-autoscale",
+      #"--alt-y-grid",
+      "--y-grid", "2:1",
       "--units-exponent", "0",
       "--border", "0",
       "-c", "BACK#333333",
@@ -263,7 +264,7 @@ while True:
       "DEF:outdoor=pressures.rrd:outdoor:MAX",
       "LINE1:outdoor#ff0000:Outdoor",
       "GPRINT:outdoor:LAST:%.1lf hPa",
-      "CDEF:outdoor-inHg=outdoor,0.02953,*", "GPRINT:outdoor-inHg:LAST:%.2lf inHg",
+      #"CDEF:outdoor-inHg=outdoor,0.02953,*", "GPRINT:outdoor-inHg:LAST:%.2lf inHg",
       "COMMENT:\l"
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
@@ -308,5 +309,3 @@ while True:
     if started and ended and ended - started < interval:
         logging.info("Sleeping...")
         time.sleep((interval - (ended - started)).seconds)
-
-    #time.sleep(60)
