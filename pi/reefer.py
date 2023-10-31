@@ -97,7 +97,7 @@ while True:
         logging.error(err)
 
     # Get barometric pressure from AWC METAR because it is more accurate than OpenWeather
-    try:
+    """ try:
         responseAWC = sessionAWC.get('https://beta.aviationweather.gov/cgi-bin/data/metar.php', params=queryAWC, timeout=8)
         # If the above command takes a long time (10+ seconds) you have an ipv6 routing/DNS error
         # This error was introduced somewhere between Python 3.7 and 3.9 or Raspbian Bullseye
@@ -124,7 +124,8 @@ while True:
     except requests.exceptions.Timeout as errt:
         logging.error(errt)
     except requests.exceptions.RequestException as err:
-        logging.error(err)
+        logging.error(err) """
+    outdoor_pressure = 'U' # service above is broken indefinitely
 
     logging.info("Indoor")
     indoor_c, indoor_f, indoor_hum = indoor_temp_hum()
@@ -176,9 +177,10 @@ while True:
      "--vertical-label", "Celsius",
      "--right-axis-label", "Fahrenheit",
      "--right-axis", "1.8:32",
-     "--width", "750", "--height", "320",
+     "--width", "860", "--height", "340",
      "--alt-autoscale",
      "--border", "0",
+     "--slope-mode",
      "-c", "BACK#333333",
      "-c", "CANVAS#18191A",
      "-c", "FONT#DDDDDD",
@@ -214,9 +216,10 @@ while True:
      "--title", "Humidity",
      "--vertical-label", "Relative (%)",
      "--right-axis", "1:0",
-     "--width", "755", "--height", "200",
+     "--width", "865", "--height", "280",
      "--alt-autoscale",
      "--border", "0",
+     "--slope-mode",
      "-c", "BACK#333333",
      "-c", "CANVAS#18191A",
      "-c", "FONT#DDDDDD",
@@ -247,13 +250,12 @@ while True:
       "--right-axis", "1:0", "--right-axis-format", "%4.0lf",
       #"--right-axis-label", "inHg",
       #"--right-axis", "0.02953:0", "--right-axis-format", "%.2lf",
-      "--width", "755", "--height", "200",
-      #"--lower-limit", "950", "--upper-limit", "1050", "--allow-shrink",
-      #"--alt-autoscale",
-      #"--alt-y-grid",
+      "--width", "865", "--height", "540",
+      "--lower-limit", "990", "--upper-limit", "1030",
       "--y-grid", "2:1",
       "--units-exponent", "0",
       "--border", "0",
+      "--slope-mode",
       "-c", "BACK#333333",
       "-c", "CANVAS#18191A",
       "-c", "FONT#DDDDDD",
@@ -280,8 +282,9 @@ while True:
       "--vertical-label", "Celsius",
       "--right-axis-label", "Fahrenheit",
       "--right-axis", "1.8:32",
-      "--width", "750", "--height", "100",
+      "--width", "860", "--height", "100",
       "--border", "0",
+      "--slope-mode",
       "-c", "BACK#333333",
       "-c", "CANVAS#18191A",
       "-c", "FONT#DDDDDD",
