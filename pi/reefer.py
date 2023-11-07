@@ -1,9 +1,10 @@
 import time
 from datetime import datetime
 from datetime import timedelta
-import glob
-import board
-import adafruit_si7021
+#import glob
+#import board
+#import adafruit_si7021
+import bme680
 import requests
 import subprocess
 import vcgencmd
@@ -15,35 +16,55 @@ interval = timedelta(seconds=interval) # Convert integer into proper time format
 
 # Set up logging
 logging.basicConfig(filename='reefer.log', format='%(asctime)s - %(levelname)s - %(message)s')
-logging.root.setLevel(logging.WARNING)
+logging.root.setLevel(logging.DEBUG)
 
 # API query definitions
 queryOWN = {'lat':'put your lat here', 'lon':'put your lon here', 'appid':'put your API key here'} # OpenWeatherMap API
-queryAWC = {'ids':'put your airport code here', 'format':'json'} # Aviation Weather Center API
+#queryAWC = {'ids':'put your airport code here', 'format':'json'} # Aviation Weather Center API
 
 # Initialize HTTP(S) request sessions for reuse during API calls
 sessionOWN = requests.Session() # OpenWeatherMap API
-sessionAWC = requests.Session() # Aviation Weather Center API
+#sessionAWC = requests.Session() # Aviation Weather Center API
 
-# Initialize Si7021
+""" # Initialize Si7021
 sensor = adafruit_si7021.SI7021(board.I2C())
 # Initialize DS18B20
 base_dir = '/sys/bus/w1/devices/'
 device_folder = glob.glob(base_dir + '28*')[0]
-device_file = device_folder + '/w1_slave'
+device_file = device_folder + '/w1_slave' """
+# Initialize BME680
+try:
+    sensor = bme680.BME680(bme680.I2C_ADDR_PRIMARY)
+except (RuntimeError, IOError):
+    sensor = bme680.BME680(bme680.I2C_ADDR_SECONDARY)
+# These oversampling settings can be tweaked to
+# change the balance between accuracy and noise in
+# the data.
+sensor.set_humidity_oversample(bme680.OS_2X)
+sensor.set_pressure_oversample(bme680.OS_4X)
+sensor.set_temperature_oversample(bme680.OS_8X)
+sensor.set_filter(bme680.FILTER_SIZE_3)
 
 # Global Celsius to Fahrenheit conversion function
 def c_to_f(temp_c):
     return (temp_c * 1.8) + 32.0
 
-# Indoor Si7021 function
+# Station pressure to MSL Pressure conversion function
+# Adjusted-to-the-sea barometric pressure
+# a2ts = aap + ((aap * 9.80665 * hasl)/(287 * (273 + atc + (hasl/400))))
+def sta_press_to_mslp(sta_press, temp_c):
+    mslp = sta_press + ((sta_press * 9.80665 * 276)/(287 * (273 + temp_c + (276/400))))
+    logging.info(f"{mslp:.2f} hPa MSL/MSLP")
+    return mslp # aka a2ts
+
+""" # Indoor Si7021 function
 def indoor_temp_hum():
     temp_c = sensor.temperature # Insert sensor error correction here if needed
     temp_f = c_to_f(temp_c)
     hum = sensor.relative_humidity
-    return temp_c, temp_f, hum
+    return temp_c, temp_f, hum """
 
-# DS18B20 functions
+""" # DS18B20 functions
 def read_temp_raw():
     f = open(device_file, 'r')
     lines = f.readlines()
@@ -63,7 +84,16 @@ def read_temp():
         temp_string = lines[1][equals_pos+2:]
         temp_c = float(temp_string) / 1000.0 + 0.5 # Insert sensor error correction here if needed
         temp_f = c_to_f(temp_c)
-        return temp_c, temp_f
+        return temp_c, temp_f """
+# Indoor BME680 functions
+def indoor_temp_hum_press():
+    temp_c = sensor.data.temperature # Insert sensor error correction here if needed, BME680 is pretty accurate
+    temp_f = c_to_f(temp_c)
+    hum = sensor.data.humidity
+    sta_press = sensor.data.pressure
+    logging.debug(f"{sta_press} hPa raw station pressure")
+    press = sta_press_to_mslp(sta_press, temp_c) # convert to MSLP
+    return temp_c, temp_f, hum, press
 
 # Pi Temperature function
 def pi_temp():
@@ -74,7 +104,9 @@ def pi_temp():
 # Main Loop
 while True:
     started = datetime.now() # Start timing the operation
+
     logging.info("Outdoor")
+
     try:
         responseOWN = sessionOWN.get('http://api.openweathermap.org/data/2.5/weather', params=queryOWN, timeout=8) # Don't use HTTPS
         responseOWN.raise_for_status()
@@ -128,13 +160,16 @@ while True:
     outdoor_pressure = 'U' # service above is broken indefinitely
 
     logging.info("Indoor")
-    indoor_c, indoor_f, indoor_hum = indoor_temp_hum()
+
+    indoor_c, indoor_f, indoor_hum, indoor_press = indoor_temp_hum_press()
     logging.info(f"Temperature: {indoor_c:.2f} °C | {indoor_f:.2f} °F")
     logging.info(f"Humidity: {indoor_hum:.1f}%")
+    logging.info(f"Pressure: {indoor_press:.2f} hPa MSLP") # converted to MSLP
 
     logging.info("Tank")
-    tank_c, tank_f = read_temp()
-    logging.info(f"Temperature: {tank_c:.2f} °C | {tank_f:.2f} °F")
+    """ tank_c, tank_f = read_temp()
+    logging.info(f"Temperature: {tank_c:.2f} °C | {tank_f:.2f} °F") """
+    tank_c = "U" # Sensor is broken
 
     logging.info("Pi")
     pi_temp_c, pi_temp_f = pi_temp()
@@ -159,7 +194,7 @@ while True:
         logging.error(f'errors: {result.stderr}')
     
     result = subprocess.run(["rrdtool", "updatev", "pressures.rrd",
-     f"N:{outdoor_pressure}"
+     f"N:{outdoor_pressure}:{indoor_press}"
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
@@ -264,9 +299,13 @@ while True:
       "-c", "FRAME#18191A",
       "-c", "ARROW#333333",
       "DEF:outdoor=pressures.rrd:outdoor:MAX",
+      "DEF:indoor=pressures.rrd:indoor:MAX",
       "LINE1:outdoor#ff0000:Outdoor",
-      "GPRINT:outdoor:LAST:%.1lf hPa",
+      "GPRINT:outdoor:LAST:%.2lf hPa",
       #"CDEF:outdoor-inHg=outdoor,0.02953,*", "GPRINT:outdoor-inHg:LAST:%.2lf inHg",
+      "COMMENT:\l",
+      "LINE1:indoor#0000ff:Indoor",
+      "GPRINT:indoor:LAST: %.2lf hPa MSLP",
       "COMMENT:\l"
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')

@@ -6,3 +6,4 @@ FT232H/old
 FT232H/reefer-private.py
 pi/reefer-private.py
 pi/*.zip
+pi/temperature-pressure-humidity.py
