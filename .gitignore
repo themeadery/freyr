@@ -1,9 +1,6 @@
 *.txt
 archive
-FT232H/generated files
-FT232H/learning
-FT232H/old
-FT232H/reefer-private.py
+FT232H
 pi/reefer-private.py
 pi/*.zip
 pi/temperature-pressure-humidity.py
