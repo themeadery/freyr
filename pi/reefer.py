@@ -2,8 +2,6 @@ import time
 from datetime import datetime
 from datetime import timedelta
 #import glob
-#import board
-#import adafruit_si7021
 import bme680
 import requests
 import subprocess
@@ -26,9 +24,7 @@ queryOWN = {'lat':'put your lat here', 'lon':'put your lon here', 'appid':'put y
 sessionOWN = requests.Session() # OpenWeatherMap API
 #sessionAWC = requests.Session() # Aviation Weather Center API
 
-""" # Initialize Si7021
-sensor = adafruit_si7021.SI7021(board.I2C())
-# Initialize DS18B20
+""" # Initialize DS18B20
 base_dir = '/sys/bus/w1/devices/'
 device_folder = glob.glob(base_dir + '28*')[0]
 device_file = device_folder + '/w1_slave' """
@@ -56,13 +52,6 @@ def sta_press_to_mslp(sta_press, temp_c):
     mslp = sta_press + ((sta_press * 9.80665 * 276)/(287 * (273 + temp_c + (276/400))))
     logging.info(f"{mslp:.2f} hPa MSL/MSLP")
     return mslp # aka a2ts
-
-""" # Indoor Si7021 function
-def indoor_temp_hum():
-    temp_c = sensor.temperature # Insert sensor error correction here if needed
-    temp_f = c_to_f(temp_c)
-    hum = sensor.relative_humidity
-    return temp_c, temp_f, hum """
 
 """ # DS18B20 functions
 def read_temp_raw():
@@ -304,7 +293,6 @@ while True:
       "DEF:indoor=pressures.rrd:indoor:MAX",
       "LINE1:outdoor#ff0000:Outdoor",
       "GPRINT:outdoor:LAST:%.2lf hPa",
-      #"CDEF:outdoor-inHg=outdoor,0.02953,*", "GPRINT:outdoor-inHg:LAST:%.2lf inHg",
       "COMMENT:\l",
       "LINE1:indoor#0000ff:Indoor",
       "GPRINT:indoor:LAST: %.2lf hPa",
