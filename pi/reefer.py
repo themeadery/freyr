@@ -87,13 +87,15 @@ def read_temp():
         return temp_c, temp_f """
 # Indoor BME680 functions
 def indoor_temp_hum_press():
-    temp_c = sensor.data.temperature # Insert sensor error correction here if needed, BME680 is pretty accurate
-    temp_f = c_to_f(temp_c)
-    hum = sensor.data.humidity
-    sta_press = sensor.data.pressure
-    logging.debug(f"{sta_press} hPa raw station pressure")
-    press = sta_press_to_mslp(sta_press, temp_c) # convert to MSLP
-    return temp_c, temp_f, hum, press
+    if sensor.get_sensor_data():
+        temp_c = sensor.data.temperature # Insert sensor error correction here if needed, BME680 is pretty accurate
+        temp_f = c_to_f(temp_c)
+        hum = sensor.data.humidity
+        sta_press = sensor.data.pressure
+        logging.debug(f"{sta_press} hPa raw station pressure")
+        press = sta_press_to_mslp(sta_press, temp_c) # convert to MSLP
+        logging.debug(f"{temp_c} {temp_f} {hum} {press}")
+        return temp_c, temp_f, hum, press
 
 # Pi Temperature function
 def pi_temp():
@@ -305,7 +307,7 @@ while True:
       #"CDEF:outdoor-inHg=outdoor,0.02953,*", "GPRINT:outdoor-inHg:LAST:%.2lf inHg",
       "COMMENT:\l",
       "LINE1:indoor#0000ff:Indoor",
-      "GPRINT:indoor:LAST: %.2lf hPa MSLP",
+      "GPRINT:indoor:LAST: %.2lf hPa",
       "COMMENT:\l"
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
