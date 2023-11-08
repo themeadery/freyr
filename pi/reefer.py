@@ -14,7 +14,7 @@ interval = timedelta(seconds=interval) # Convert integer into proper time format
 
 # Set up logging
 logging.basicConfig(filename='reefer.log', format='%(asctime)s - %(levelname)s - %(message)s')
-logging.root.setLevel(logging.DEBUG)
+logging.root.setLevel(logging.WARNING)
 
 # API query definitions
 queryOWN = {'lat':'put your lat here', 'lon':'put your lon here', 'appid':'put your API key here'} # OpenWeatherMap API
@@ -23,6 +23,9 @@ queryOWN = {'lat':'put your lat here', 'lon':'put your lon here', 'appid':'put y
 # Initialize HTTP(S) request sessions for reuse during API calls
 sessionOWN = requests.Session() # OpenWeatherMap API
 #sessionAWC = requests.Session() # Aviation Weather Center API
+
+# Station altitude in meters
+sta_alt = 276.0
 
 """ # Initialize DS18B20
 base_dir = '/sys/bus/w1/devices/'
@@ -46,12 +49,11 @@ def c_to_f(temp_c):
     return (temp_c * 1.8) + 32.0
 
 # Station pressure to MSL Pressure conversion function
-# Adjusted-to-the-sea barometric pressure
-# a2ts = aap + ((aap * 9.80665 * hasl)/(287 * (273 + atc + (hasl/400))))
+# Formula source: https://gist.github.com/cubapp/23dd4e91814a995b8ff06f406679abcf
 def sta_press_to_mslp(sta_press, temp_c):
-    mslp = sta_press + ((sta_press * 9.80665 * 276)/(287 * (273 + temp_c + (276/400))))
-    logging.info(f"{mslp:.2f} hPa MSL/MSLP")
-    return mslp # aka a2ts
+    mslp = sta_press + ((sta_press * 9.80665 * sta_alt)/(287 * (273 + temp_c + (sta_alt/400))))
+    logging.info(f"{mslp:.2f} hPa MSL")
+    return mslp
 
 """ # DS18B20 functions
 def read_temp_raw():
@@ -74,7 +76,7 @@ def read_temp():
         temp_c = float(temp_string) / 1000.0 + 0.5 # Insert sensor error correction here if needed
         temp_f = c_to_f(temp_c)
         return temp_c, temp_f """
-# Indoor BME680 functions
+# Indoor BME680 function
 def indoor_temp_hum_press():
     if sensor.get_sensor_data():
         temp_c = sensor.data.temperature # Insert sensor error correction here if needed, BME680 is pretty accurate
@@ -274,8 +276,6 @@ while True:
       "--title", "Barometric Pressure (MSL)",
       "--vertical-label", "hPa",
       "--right-axis", "1:0", "--right-axis-format", "%4.0lf",
-      #"--right-axis-label", "inHg",
-      #"--right-axis", "0.02953:0", "--right-axis-format", "%.2lf",
       "--width", "865", "--height", "540",
       "--lower-limit", "990", "--upper-limit", "1030",
       "--y-grid", "2:1",
@@ -291,10 +291,10 @@ while True:
       "-c", "ARROW#333333",
       "DEF:outdoor=pressures.rrd:outdoor:MAX",
       "DEF:indoor=pressures.rrd:indoor:MAX",
-      "LINE1:outdoor#ff0000:Outdoor",
-      "GPRINT:outdoor:LAST:%.2lf hPa",
-      "COMMENT:\l",
-      "LINE1:indoor#0000ff:Indoor",
+      #"LINE1:outdoor#ff0000:Outdoor",
+      #"GPRINT:outdoor:LAST:%.2lf hPa",
+      #"COMMENT:\l",
+      "LINE1:indoor#00ff00:Local",
       "GPRINT:indoor:LAST: %.2lf hPa",
       "COMMENT:\l"
      ], capture_output=True, text=True)
