@@ -4,3 +4,5 @@ FT232H
 pi/reefer-private.py
 pi/*.zip
 pi/temperature-pressure-humidity.py
+Pi Pico W/secrets.py
+Pi Pico W/webrepl_cfg.py
