@@ -1,7 +1,6 @@
 import time
 from datetime import datetime
 from datetime import timedelta
-#import glob
 import bme680
 import requests
 import subprocess
@@ -17,20 +16,17 @@ logging.basicConfig(filename='reefer.log', format='%(asctime)s - %(levelname)s -
 logging.root.setLevel(logging.WARNING)
 
 # API query definitions
-queryOWN = {'lat':'put your lat here', 'lon':'put your lon here', 'appid':'put your API key here'} # OpenWeatherMap API
+#queryOWN = {'lat':'put your lat here', 'lon':'put your lon here', 'appid':'put your API key here'} # OpenWeatherMap API
 #queryAWC = {'ids':'put your airport code here', 'format':'json'} # Aviation Weather Center API
 
 # Initialize HTTP(S) request sessions for reuse during API calls
-sessionOWN = requests.Session() # OpenWeatherMap API
+#sessionOWN = requests.Session() # OpenWeatherMap API
 #sessionAWC = requests.Session() # Aviation Weather Center API
+sessionSatellite = requests.Session() # Pi Pico W + si7021 sensor API
 
 # Station altitude in meters
 sta_alt = 276.0
 
-""" # Initialize DS18B20
-base_dir = '/sys/bus/w1/devices/'
-device_folder = glob.glob(base_dir + '28*')[0]
-device_file = device_folder + '/w1_slave' """
 # Initialize BME680
 try:
     sensor = bme680.BME680(bme680.I2C_ADDR_PRIMARY)
@@ -55,27 +51,6 @@ def sta_press_to_mslp(sta_press, temp_c):
     logging.info(f"{mslp:.2f} hPa MSL")
     return mslp
 
-""" # DS18B20 functions
-def read_temp_raw():
-    f = open(device_file, 'r')
-    lines = f.readlines()
-    f.close()
-    return lines
-
-def read_temp():
-    lines = read_temp_raw()
-    # logging.info(f"Debug read_temp_raw #1: {lines}") # Debug
-    while len(lines) != 2:
-        logging.debug(f"Debug read_temp_raw #2: {lines}") # Debug
-        time.sleep(0.2)
-        lines = read_temp_raw()
-        logging.debug(f"Debug read_temp_raw #3: {lines}") # Debug
-    equals_pos = lines[1].find('t=')
-    if equals_pos != -1:
-        temp_string = lines[1][equals_pos+2:]
-        temp_c = float(temp_string) / 1000.0 + 0.5 # Insert sensor error correction here if needed
-        temp_f = c_to_f(temp_c)
-        return temp_c, temp_f """
 # Indoor BME680 function
 def indoor_temp_hum_press():
     if sensor.get_sensor_data():
@@ -101,14 +76,13 @@ while True:
     logging.info("Outdoor")
 
     try:
-        responseOWN = sessionOWN.get('http://api.openweathermap.org/data/2.5/weather', params=queryOWN, timeout=8) # Don't use HTTPS
-        responseOWN.raise_for_status()
+        responseSatellite = sessionSatellite.get('http://192.168.0.5') # Don't use HTTPS
+        responseSatellite.raise_for_status()
         # Code below here will only run if the request is successful
-        main = responseOWN.json()['main']
-        tempk = main['temp']
-        outdoor_c = tempk - 273.14
+        #index0 = responseSatellite.json()
+        outdoor_c = responseSatellite.json()['temperature']
         outdoor_f = c_to_f(outdoor_c)
-        outdoor_hum = main['humidity']
+        outdoor_hum = responseSatellite.json()['humidity']
         logging.info(f"Temperature: {outdoor_c:.2f} °C | {outdoor_f:.2f} °F")
         logging.info(f"Humidity: {outdoor_hum:.1f}%")
         # Code above here will only run if the request is successful
@@ -121,36 +95,8 @@ while True:
     except requests.exceptions.RequestException as err:
         logging.error(err)
 
-    # Get barometric pressure from AWC METAR because it is more accurate than OpenWeather
-    """ try:
-        responseAWC = sessionAWC.get('https://beta.aviationweather.gov/cgi-bin/data/metar.php', params=queryAWC, timeout=8)
-        # If the above command takes a long time (10+ seconds) you have an ipv6 routing/DNS error
-        # This error was introduced somewhere between Python 3.7 and 3.9 or Raspbian Bullseye
-        # The Python devs and the Requests Library devs have failed to merge proposed patches
-        # Disable ipv6 temporarily by running "sudo sysctl -w net.ipv6.conf.all.disable_ipv6=1"
-        # If faster, look into a more permanent way to disable/fix ipv6 as the above is not persistent across reboots
-        responseAWC.raise_for_status()
-        outdoor_pressure = 'U' # Set to RRDtool specific null value if json from API is broken
-        try:
-            index0 = responseAWC.json()[0]
-        except KeyError as errK:
-            logging.error(errK)
-        except IndexError as errI:
-            logging.error(errI)
-        except TypeError as errT:
-            logging.error(errT)
-        else:
-            outdoor_pressure = index0['altim']
-        logging.info(f"Barometric Pressure: {outdoor_pressure} hPa (MSL)")
-    except requests.exceptions.HTTPError as errh:
-        logging.error(errh)
-    except requests.exceptions.ConnectionError as errc:
-        logging.error(errc)
-    except requests.exceptions.Timeout as errt:
-        logging.error(errt)
-    except requests.exceptions.RequestException as err:
-        logging.error(err) """
-    outdoor_pressure = 'U' # service above is broken indefinitely
+    # TODO squash indoor/outdoor pressure into "local" including RRD database
+    outdoor_pressure = 'U' 
 
     logging.info("Indoor")
 
@@ -199,7 +145,7 @@ while True:
     logging.info("Creating graphs...")
     result = subprocess.run([
      "rrdtool", "graph",
-     "temperatures.png",
+     "/mnt/tmp/temperatures.png",
      "--font", "DEFAULT:10:",
      "--title", "Temperature",
      "--vertical-label", "Celsius",
@@ -239,7 +185,7 @@ while True:
 
     result = subprocess.run([
      "rrdtool", "graph",
-     "humidities.png",
+     "/mnt/tmp/humidities.png",
      "--font", "DEFAULT:10:",
      "--title", "Humidity",
      "--vertical-label", "Relative (%)",
@@ -271,7 +217,7 @@ while True:
     
     result = subprocess.run([
       "rrdtool", "graph",
-      "pressures.png",
+      "/mnt/tmp/pressures.png",
       "--font", "DEFAULT:10:",
       "--title", "Barometric Pressure (MSL)",
       "--vertical-label", "hPa",
@@ -305,7 +251,7 @@ while True:
     
     result = subprocess.run([
       "rrdtool", "graph",
-      "pi.png",
+      "/mnt/tmp/pi.png",
       "--font", "DEFAULT:10:",
       "--title", "Pi Temperature",
       "--vertical-label", "Celsius",
