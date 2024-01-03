@@ -17,11 +17,9 @@ logging.root.setLevel(logging.WARNING)
 
 # API query definitions
 #queryOWN = {'lat':'put your lat here', 'lon':'put your lon here', 'appid':'put your API key here'} # OpenWeatherMap API
-#queryAWC = {'ids':'put your airport code here', 'format':'json'} # Aviation Weather Center API
 
 # Initialize HTTP(S) request sessions for reuse during API calls
 #sessionOWN = requests.Session() # OpenWeatherMap API
-#sessionAWC = requests.Session() # Aviation Weather Center API
 sessionSatellite = requests.Session() # Pi Pico W + si7021 sensor API
 
 # Station altitude in meters
@@ -54,7 +52,7 @@ def sta_press_to_mslp(sta_press, temp_c):
 # Indoor BME680 function
 def indoor_temp_hum_press():
     if sensor.get_sensor_data():
-        temp_c = sensor.data.temperature # Insert sensor error correction here if needed, BME680 is pretty accurate
+        temp_c = sensor.data.temperature - 0.5 # Insert sensor error correction here if needed
         temp_f = c_to_f(temp_c)
         hum = sensor.data.humidity
         sta_press = sensor.data.pressure
