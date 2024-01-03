@@ -1,4 +1,3 @@
-import time
 from machine import Pin, I2C
 from micropython_si7021 import si7021
 from microdot import Microdot
@@ -15,9 +14,3 @@ async def index(request):
             'humidity': si.humidity}
 
 app.run(port=80)
-
-"""while True:
-    print(f"Temperature: {si.temperature:.2f}")
-    print(f"Humidity: {si.humidity:.1f}%")
-    print()
-    time.sleep(15)"""

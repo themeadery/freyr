@@ -77,7 +77,6 @@ while True:
         responseSatellite = sessionSatellite.get('http://192.168.0.5') # Don't use HTTPS
         responseSatellite.raise_for_status()
         # Code below here will only run if the request is successful
-        #index0 = responseSatellite.json()
         outdoor_c = responseSatellite.json()['temperature']
         outdoor_f = c_to_f(outdoor_c)
         outdoor_hum = responseSatellite.json()['humidity']
@@ -121,7 +120,7 @@ while True:
     logging.info(f'{result.stdout}')
     if result.stderr:
         logging.error(f'errors: {result.stderr}')
-    
+
     result = subprocess.run(["rrdtool", "updatev", "humidities.rrd",
      f"N:{outdoor_hum}:{indoor_hum}"
      ], capture_output=True, text=True)
@@ -129,7 +128,7 @@ while True:
     logging.info(f'{result.stdout}')
     if result.stderr:
         logging.error(f'errors: {result.stderr}')
-    
+
     result = subprocess.run(["rrdtool", "updatev", "pressures.rrd",
      f"N:{outdoor_pressure}:{indoor_press}"
      ], capture_output=True, text=True)
@@ -137,7 +136,7 @@ while True:
     logging.info(f'{result.stdout}')
     if result.stderr:
         logging.error(f'errors: {result.stderr}')
-    
+
     logging.info("Done")
 
     logging.info("Creating graphs...")
@@ -212,7 +211,7 @@ while True:
     logging.info(f'{result.stdout}')
     if result.stderr:
         logging.error(f'errors: {result.stderr}')
-    
+
     result = subprocess.run([
       "rrdtool", "graph",
       "/mnt/tmp/pressures.png",
@@ -246,7 +245,7 @@ while True:
     logging.info(f'{result.stdout}')
     if result.stderr:
         logging.error(f'errors: {result.stderr}')
-    
+
     result = subprocess.run([
       "rrdtool", "graph",
       "/mnt/tmp/pi.png",
@@ -275,7 +274,7 @@ while True:
     logging.info(f'{result.stdout}')
     if result.stderr:
         logging.error(f'errors: {result.stderr}')
-    
+
     logging.info("Done")
 
     ended = datetime.now() # Stop timing the operation
