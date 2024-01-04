@@ -74,7 +74,7 @@ while True:
     logging.info("Outdoor")
 
     try:
-        responseSatellite = sessionSatellite.get('http://192.168.0.5') # Don't use HTTPS
+        responseSatellite = sessionSatellite.get('http://192.168.0.5', timeout=10) # Don't use HTTPS
         responseSatellite.raise_for_status()
         # Code below here will only run if the request is successful
         outdoor_c = responseSatellite.json()['temperature']
@@ -144,10 +144,12 @@ while True:
      "rrdtool", "graph",
      "/mnt/tmp/temperatures.png",
      "--font", "DEFAULT:10:",
+     "--font", "AXIS:8:",
      "--title", "Temperature",
      "--vertical-label", "Celsius",
      "--right-axis-label", "Fahrenheit",
      "--right-axis", "1.8:32",
+     "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
      "--width", "860", "--height", "340",
      "--alt-autoscale",
      "--border", "0",
@@ -184,10 +186,12 @@ while True:
      "rrdtool", "graph",
      "/mnt/tmp/humidities.png",
      "--font", "DEFAULT:10:",
+     "--font", "AXIS:8:",
      "--title", "Humidity",
      "--vertical-label", "Relative (%)",
      "--right-axis", "1:0",
-     "--width", "865", "--height", "280",
+     "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
+     "--width", "865", "--height", "300",
      "--alt-autoscale",
      "--border", "0",
      "--slope-mode",
@@ -216,12 +220,14 @@ while True:
       "rrdtool", "graph",
       "/mnt/tmp/pressures.png",
       "--font", "DEFAULT:10:",
+      "--font", "AXIS:8:",
       "--title", "Barometric Pressure (MSL)",
       "--vertical-label", "hPa",
       "--right-axis", "1:0", "--right-axis-format", "%4.0lf",
+      "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
       "--width", "865", "--height", "535",
       "--lower-limit", "994", "--upper-limit", "1030",
-      "--y-grid", "2:1",
+      "--y-grid", "1:2",
       "--units-exponent", "0",
       "--border", "0",
       "--slope-mode",
@@ -250,10 +256,12 @@ while True:
       "rrdtool", "graph",
       "/mnt/tmp/pi.png",
       "--font", "DEFAULT:10:",
+      "--font", "AXIS:8:",
       "--title", "Pi Temperature",
       "--vertical-label", "Celsius",
       "--right-axis-label", "Fahrenheit",
       "--right-axis", "1.8:32",
+      "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
       "--width", "860", "--height", "100",
       "--border", "0",
       "--slope-mode",
