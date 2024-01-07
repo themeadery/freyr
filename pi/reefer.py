@@ -71,18 +71,26 @@ def pi_temp():
 while True:
     started = datetime.now() # Start timing the operation
 
+    logging.info("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
     logging.info("Outdoor")
 
     try:
+        # Initialize variables so if request fails graphs still populate with NaN
+        outdoor_c = 'U'
+        #outdoor_f = 'U' # not necessary?
+        outdoor_hum = 'U'
+
         responseSatellite = sessionSatellite.get('http://192.168.0.5', timeout=10) # Don't use HTTPS
-        responseSatellite.raise_for_status()
+        responseSatellite.raise_for_status() # If error, try to catch it in except clauses below
+
         # Code below here will only run if the request is successful
         outdoor_c = responseSatellite.json()['temperature']
         outdoor_f = c_to_f(outdoor_c)
         outdoor_hum = responseSatellite.json()['humidity']
         logging.info(f"Temperature: {outdoor_c:.2f} °C | {outdoor_f:.2f} °F")
-        logging.info(f"Humidity: {outdoor_hum:.1f}%")
+        logging.info(f"Humidity: {outdoor_hum:.1f} %")
         # Code above here will only run if the request is successful
+
     except requests.exceptions.HTTPError as errh:
         logging.error(errh)
     except requests.exceptions.ConnectionError as errc:
