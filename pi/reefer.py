@@ -101,7 +101,7 @@ while True:
         logging.error(err)
 
     # TODO squash indoor/outdoor pressure into "local" including RRD database
-    outdoor_pressure = 'U' 
+    #outdoor_pressure = 'U' 
 
     logging.info("Indoor")
 
@@ -138,7 +138,7 @@ while True:
         logging.error(f'errors: {result.stderr}')
 
     result = subprocess.run(["rrdtool", "updatev", "pressures.rrd",
-     f"N:{outdoor_pressure}:{indoor_press}"
+     f"N:{indoor_press}"
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
@@ -246,11 +246,8 @@ while True:
       "-c", "MGRID#DDDDDD33",
       "-c", "FRAME#18191A",
       "-c", "ARROW#333333",
-      "DEF:outdoor=pressures.rrd:outdoor:MAX",
+      #"DEF:outdoor=pressures.rrd:outdoor:MAX",
       "DEF:indoor=pressures.rrd:indoor:MAX",
-      #"LINE1:outdoor#ff0000:Outdoor",
-      #"GPRINT:outdoor:LAST:%.2lf hPa",
-      #"COMMENT:\l",
       "LINE1:indoor#00ff00:Local",
       "GPRINT:indoor:LAST: %.2lf hPa",
       "COMMENT:\l"
