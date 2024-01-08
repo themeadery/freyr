@@ -61,7 +61,7 @@ def indoor_temp_hum_press():
         logging.debug(f"{temp_c} {temp_f} {hum} {press}")
         return temp_c, temp_f, hum, press
 
-# Pi Temperature function
+# Pi Zero W Temperature function
 def pi_temp():
     temp_c = vcgencmd.measure_temp()
     temp_f = c_to_f(temp_c)
@@ -77,8 +77,8 @@ while True:
     try:
         # Initialize variables so if request fails graphs still populate with NaN
         outdoor_c = 'U'
-        #outdoor_f = 'U' # not necessary?
         outdoor_hum = 'U'
+        picow_temp_c = 'U'
 
         responseSatellite = sessionSatellite.get('http://192.168.0.5', timeout=10) # Don't use HTTPS
         responseSatellite.raise_for_status() # If error, try to catch it in except clauses below
@@ -87,8 +87,11 @@ while True:
         outdoor_c = responseSatellite.json()['temperature']
         outdoor_f = c_to_f(outdoor_c)
         outdoor_hum = responseSatellite.json()['humidity']
+        picow_temp_c = responseSatellite.json()['mcu']
+        picow_temp_f = c_to_f(picow_temp_c)
         logging.info(f"Temperature: {outdoor_c:.2f} °C | {outdoor_f:.2f} °F")
         logging.info(f"Humidity: {outdoor_hum:.1f} %")
+        logging.info(f"Pi Pico W: {picow_temp_c:.2f} °C | {picow_temp_f:.2f} °F")
         # Code above here will only run if the request is successful
 
     except requests.exceptions.HTTPError as errh:
@@ -99,9 +102,6 @@ while True:
         logging.error(errt)
     except requests.exceptions.RequestException as err:
         logging.error(err)
-
-    # TODO squash indoor/outdoor pressure into "local" including RRD database
-    #outdoor_pressure = 'U' 
 
     logging.info("Indoor")
 
@@ -115,14 +115,14 @@ while True:
     logging.info(f"Temperature: {tank_c:.2f} °C | {tank_f:.2f} °F") """
     tank_c = "U" # Sensor is broken
 
-    logging.info("Pi")
+    logging.info("Pi Zero W")
     pi_temp_c, pi_temp_f = pi_temp()
-    logging.info(f"CPU: {pi_temp_c:.2f} °C | {pi_temp_f:.2f} °F")
+    logging.info(f"Pi Zero W: {pi_temp_c:.2f} °C | {pi_temp_f:.2f} °F")
 
     logging.info("Updating RRD databases...")
 
     result = subprocess.run(["rrdtool", "updatev", "temperatures.rrd",
-     f"N:{outdoor_c}:{indoor_c}:{tank_c}:{pi_temp_c}"
+     f"N:{outdoor_c}:{indoor_c}:{tank_c}:{pi_temp_c}:{picow_temp_c}"
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
@@ -262,12 +262,12 @@ while True:
       "/mnt/tmp/pi.png",
       "--font", "DEFAULT:10:",
       "--font", "AXIS:8:",
-      "--title", "Pi Temperature",
+      "--title", "Pi Temperatures",
       "--vertical-label", "Celsius",
       "--right-axis-label", "Fahrenheit",
       "--right-axis", "1.8:32",
       "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
-      "--width", "860", "--height", "100",
+      "--width", "860", "--height", "120",
       "--border", "0",
       "--slope-mode",
       "-c", "BACK#333333",
@@ -278,7 +278,12 @@ while True:
       "-c", "FRAME#18191A",
       "-c", "ARROW#333333",
       "DEF:pi=temperatures.rrd:pi:MAX",
-      "AREA:pi#ff0000#320000:CPU",
+      "DEF:picow=temperatures.rrd:picow:MAX",
+      "LINE1:picow#ff0000:Pico W MCU",
+      "GPRINT:picow:LAST:%2.1lf °C",
+      "CDEF:picow-f=picow,1.8,*,32,+", "GPRINT:picow-f:LAST:%2.1lf °F",
+      "COMMENT:\l",
+      "LINE1:pi#0000ff:Zero W CPU",
       "GPRINT:pi:LAST:%2.1lf °C",
       "CDEF:pi-f=pi,1.8,*,32,+", "GPRINT:pi-f:LAST:%2.1lf °F",
       "COMMENT:\l"

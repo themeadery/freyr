@@ -30,7 +30,7 @@ According to my testing, Google searches, and the DS18B20 datasheet 3v3 is not e
 ### Dependencies
 
 You can satisfy pretty much all dependencies with these commands on a fresh Pi:
-```
+```bash
 $ sudo apt install git nginx rrdtool python3-pip
 $ sudo pip install adafruit-circuitpython-si7021
 $ sudo pip install git+https://github.com/nicmcd/vcgencmd.git
@@ -41,8 +41,8 @@ I2C and 1-Wire interfaces must be turned on in ```$ sudo raspi-config```
 ### RRD
 #### Create RRD databases:
 
-```
-$ rrdtool create temperatures.rrd --step 60 DS:outdoor:GAUGE:120:0:55 DS:indoor:GAUGE:120:0:55 DS:tank:GAUGE:120:0:55 DS:pi:GAUGE:120:0:100 RA:MAX:0.5:1:1440
+```bash
+$ rrdtool create temperatures.rrd --step 60 DS:outdoor:GAUGE:120:0:55 DS:indoor:GAUGE:120:0:55 DS:tank:GAUGE:120:0:55 DS:pi:GAUGE:120:0:100 DS:picow:GAUGE:120:0:100 RA:MAX:0.5:1:1440
 $ rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:GAUGE:120:0:100 RRA:MAX:0.5:1:1440
 $ rrdtool create pressures.rrd --step 60 DS:indoor:GAUGE:120:800:1100 RRA:MAX:0.5:1:1440
 ```
@@ -70,7 +70,7 @@ I used ```relay.py``` for a while, but there's no need to have a constantly runn
 
 Use the example below to turn a light on at 7:00 AM and off at 7:00 PM:
 
-```
+```bash
 $ crontab -e
 ```
 
@@ -82,7 +82,7 @@ $ crontab -e
 
 ### More Advanced Relay Control
 
-```
+```bash
 $ pip install flask
 $ python relayControl.py
 ```
@@ -97,7 +97,7 @@ The API's I am poking prove to be a continuous source of beard-pulling as I try 
 
 systemd to the rescue?
 
-```
+```bash
 $ mkdir -p .config/systemd/user
 $ cp reefer.service .config/systemd/user
 $ systemctl --user start reefer.service
@@ -123,8 +123,6 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-My next move will be to upgrade to a BME680 sensor that includes pressure data so I don't have to poll an API for it. The next upgrade after that would be to put another Pi Zero 2 W/W outside with a BME680 in a white 3D printed "Stevenson screen" enclosure.
-
 I realize this is turning more into a glorified weather station app, but that's where my interests have led me!
 
 #### TODO
@@ -134,5 +132,7 @@ I realize this is turning more into a glorified weather station app, but that's 
 - Maybe switch from nginx to built-in Python webserver to further reduce system load, configuration, writes to sdcard, etc.
 - Remove DS18B20 references and documentation
 - Add BME680 documentation
-- Add Pi Pico W + Si7021 sattelite sensor code and documentation
-- Squash indoor/outdoor pressures to "local"
+- ~~Add Pi Pico W + Si7021 sattelite sensor code~~ and documentation
+- ~~Squash indoor/outdoor pressures to "local"~~
+- Output data to Wunderground
+- Break out more things in main loop to functions

@@ -1,5 +1,5 @@
 import time
-from machine import Pin, I2C
+from machine import Pin, I2C, ADC
 from SI7021 import SI7021
 from microdot import Microdot
 import gc
@@ -8,7 +8,16 @@ import gc
 i2c = I2C(0, sda=Pin(0), scl=Pin(1))  # i2c0 pins for Pico
 si = SI7021(i2c)
 
+# Initialize internal mcu temperature sensor
+sensor = ADC(4) # ADC Pin 4
+
 app = Microdot()
+
+def read_mcu_temp():
+    adc_value = sensor.read_u16()
+    volt = (3.3/65535) * adc_value
+    mcu_temp = 27 - (volt - 0.706)/0.001721
+    return (mcu_temp)
 
 @app.before_request
 async def start_timer(request):
@@ -30,9 +39,11 @@ async def end_timer(request, response):
 async def index(request):
     humidity = si.humidity()
     temperature = si.temperature(new=False)
+    mcu_temp = read_mcu_temp()
     print(f'Temperature: {temperature} °C')
     print(f'Humidity: {humidity} %')
+    print(f'MCU Temperature: {mcu_temp} °C')
     return {'temperature': temperature,
-            'humidity': humidity}
+            'humidity': humidity, 'mcu': mcu_temp}
 
 app.run(port=80, debug=True)
