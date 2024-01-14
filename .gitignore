@@ -1,8 +1,6 @@
 *.txt
 archive
-FT232H
 pi/reefer-private.py
-pi/*.zip
-pi/temperature-pressure-humidity.py
+*.zip
 Pi Pico W/secrets.py
 Pi Pico W/webrepl_cfg.py

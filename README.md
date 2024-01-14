@@ -100,8 +100,8 @@ systemd to the rescue?
 ```bash
 $ mkdir -p .config/systemd/user
 $ cp reefer.service .config/systemd/user
-$ systemctl --user start reefer.service
-$ systemctl --user enable service
+$ systemctl --user start reefer
+$ systemctl --user enable reefer
 $ sudo loginctl enable-linger pi
 ```
 
