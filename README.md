@@ -11,15 +11,35 @@ This started out as a project to control my reef aquarium, hence the name. It th
 I moved the project from a FT232H to a Raspberry Pi Zero W and added a DS18B20 waterproof temperature sensor for an aquarium. With plenty of GPIO on the Pi and relays in hand, I plan on controlling pumps/lights/etc in the future.
 
 ### Hardware
-#### Si7021
+
+#### BME680
+
 https://pinout.xyz/pinout/i2c
+
+- VCC to 3v3 (pin 1)
+- GND to ground (any)
+- SCL to GPIO 3 [I2C1 SCL Clock] (pin 5)
+- SDA to GPIO 2 [I2C1 SDA Data] (pin 3)
+- SDO to nothing
+- CS to ground (any)
+
+During testing I kept having failures of the sensor until I discovered an unofficial fix that contradicts the official documentation a bit. CS must be run to a ground pin. All of a sudden the sensor was rock solid stable for weeks after that.
+
+#### Si7021
+
+https://pinout.xyz/pinout/i2c
+
 - VIN to 3v3 (pin 1)
 - GND to ground (pin 9)
 - SCL to GPIO 3 [I2C1 SCL Clock] (pin 5)
 - SDA to GPIO 2 [I2C1 SDA Data] (pin 3)
 
+This sensor always seems to work no matter what and is very accurate. I am impressed with the performance. I am currently using it outdoors on a Pico W, so the wiring is different than shown above.
+
 #### DS18B20
+
 https://pinout.xyz/pinout/1_wire
+
 - Red Wire to 5v (pin 2)
 - Blue Wire to ground (pin 6 or 9)
 - Yellow Wire to GPIO 4 [Data] (pin 7)
@@ -39,14 +59,17 @@ $ sudo pip install git+https://github.com/nicmcd/vcgencmd.git
 I2C and 1-Wire interfaces must be turned on in ```$ sudo raspi-config```
 
 ### RRD
-#### Create RRD databases:
+
+#### Create RRD databases
 
 ```bash
 $ rrdtool create temperatures.rrd --step 60 DS:outdoor:GAUGE:120:-20:55 DS:indoor:GAUGE:120:0:55 DS:tank:GAUGE:120:0:55 DS:pi:GAUGE:120:0:100 DS:picow:GAUGE:120:0:100 RRA:MAX:0.5:1:1440
 $ rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:GAUGE:120:0:100 RRA:MAX:0.5:1:1440
 $ rrdtool create pressures.rrd --step 60 DS:indoor:GAUGE:120:800:1100 RRA:MAX:0.5:1:1440
+$ rrdtool create gas.rrd --step 60 DS:indoor:GAUGE:120:50:50000 RRA:AVERAGE:0.5:1:1440
 ```
-This will create databases with a 60 second interval, 120 second heartbeat timeout, between -20 and 55 degrees Celsius for the outdoor sensor, between 0 and 55 degrees Celsius for the indoor sensors, 0-100 degrees Celsius for the pi CPU sensor, 0-100% relative humidity, and 800-1100 hPa pressure with 24 hours of data before rolling over.
+
+This will create databases with a 60 second interval, 120 second heartbeat timeout, between -20 and 55 degrees Celsius for the outdoor sensor, between 0 and 55 degrees Celsius for the indoor sensors, 0-100 degrees Celsius for the pi CPU sensor, 0-100% relative humidity, 800-1100 hPa pressure, and 50-50,000 ohms gas resistance with 24 hours of data before rolling over.
 
 More information here: https://michael.bouvy.net/post/graph-data-rrdtool-sensors-arduino
 
@@ -54,7 +77,7 @@ More information here: https://michael.bouvy.net/post/graph-data-rrdtool-sensors
 
 ```index.html```
 
-Very simple HTML to display the graphs. You will likely want a webserver for this. I use nginx. It refreshes the page every 60 seconds. Sometimes this generates a miss while the PNG files are being generated.
+Very simple HTML to display the graphs. You will likely want a webserver for this. I use nginx. It refreshes the page every 30 seconds in an attempt to reduce misses while the graphs are being generated. This doesn't work very well, so I would love to implement a server-side generated trigger for refresh, more like a "push" based system. Unfortunately, when I first looked into implementing this it looked way too complicated for my motivation at the time. Looking for better solutions.
 
 ### Relay
 
@@ -135,5 +158,6 @@ I realize this is turning more into a glorified weather station app, but that's 
 - ~~Add Pi Pico W + Si7021 sattelite sensor code~~ and documentation
 - ~~Squash indoor/outdoor pressures to "local"~~
 - Output data to Wunderground
-- Break out more things in main loop to functions and use main loop for flow control only
+- Break out more things in main loop to functions and use main loop for flow control only (aka refactoring?)
 - Add High/Low stats
+- Log rotation using logging.handlers.RotatingFileHandler
