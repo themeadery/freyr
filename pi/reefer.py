@@ -6,14 +6,19 @@ import requests
 import subprocess
 import vcgencmd
 import logging
+from logging.handlers import RotatingFileHandler
 
 # Loop interval
 interval = 60 # in seconds
 interval = timedelta(seconds=interval) # Convert integer into proper time format
 
 # Set up logging
-logging.basicConfig(filename='reefer.log', format='%(asctime)s - %(levelname)s - %(message)s')
-logging.root.setLevel(logging.WARNING)
+logging.basicConfig(
+    handlers=[RotatingFileHandler('reefer.log', maxBytes=4000000, backupCount=3)],
+    level=logging.WARNING,
+    format='%(asctime)s - %(levelname)s - %(message)s')
+#logging.basicConfig(filename='reefer.log', format='%(asctime)s - %(levelname)s - %(message)s')
+#logging.root.setLevel(logging.WARNING)
 
 # API query definitions
 #queryOWN = {'lat':'put your lat here', 'lon':'put your lon here', 'appid':'put your API key here'} # OpenWeatherMap API

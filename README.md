@@ -160,4 +160,4 @@ I realize this is turning more into a glorified weather station app, but that's 
 - Output data to Wunderground
 - Break out more things in main loop to functions and use main loop for flow control only (aka refactoring?)
 - Add High/Low stats
-- Log rotation using logging.handlers.RotatingFileHandler
+- ~~Log rotation using logging.handlers.RotatingFileHandler~~
