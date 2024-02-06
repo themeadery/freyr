@@ -15,7 +15,7 @@ interval = timedelta(seconds=interval) # Convert integer into proper time format
 # Set up logging
 logging.basicConfig(
     handlers=[RotatingFileHandler('reefer.log', maxBytes=4000000, backupCount=3)],
-    level=logging.WARNING,
+    level=logging.WARNING, # Set logging level
     format='%(asctime)s - %(levelname)s - %(message)s')
 #logging.basicConfig(filename='reefer.log', format='%(asctime)s - %(levelname)s - %(message)s')
 #logging.root.setLevel(logging.WARNING)
@@ -261,8 +261,8 @@ while True:
       "--vertical-label", "hPa",
       "--right-axis", "1:0", "--right-axis-format", "%4.0lf",
       "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
-      "--width", "865", "--height", "400",
-      "--lower-limit", "996", "--upper-limit", "1028",
+      "--width", "865", "--height", "300",
+      "--lower-limit", "1002", "--upper-limit", "1030",
       "--y-grid", "1:2",
       "--units-exponent", "0",
       "--border", "0",
