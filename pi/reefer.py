@@ -17,8 +17,6 @@ logging.basicConfig(
     handlers=[RotatingFileHandler('reefer.log', maxBytes=4000000, backupCount=3)],
     level=logging.WARNING, # Set logging level
     format='%(asctime)s - %(levelname)s - %(message)s')
-#logging.basicConfig(filename='reefer.log', format='%(asctime)s - %(levelname)s - %(message)s')
-#logging.root.setLevel(logging.WARNING)
 
 # API query definitions
 #queryOWN = {'lat':'put your lat here', 'lon':'put your lon here', 'appid':'put your API key here'} # OpenWeatherMap API
@@ -197,9 +195,9 @@ while True:
      "-c", "MGRID#DDDDDD33",
      "-c", "FRAME#18191A",
      "-c", "ARROW#333333",
-     "DEF:outdoor=temperatures.rrd:outdoor:MAX",
-     "DEF:indoor=temperatures.rrd:indoor:MAX",
-     "DEF:tank=temperatures.rrd:tank:MAX",
+     "DEF:outdoor=temperatures.rrd:outdoor:LAST",
+     "DEF:indoor=temperatures.rrd:indoor:LAST",
+     "DEF:tank=temperatures.rrd:tank:LAST",
      "LINE1:outdoor#ff0000:Outdoor",
      "GPRINT:outdoor:LAST:%2.1lf °C",
      "CDEF:outdoor-f=outdoor,1.8,*,32,+", "GPRINT:outdoor-f:LAST:%2.1lf °F",
@@ -238,8 +236,8 @@ while True:
      "-c", "MGRID#DDDDDD33",
      "-c", "FRAME#18191A",
      "-c", "ARROW#333333",
-     "DEF:outdoor=humidities.rrd:outdoor:MAX",
-     "DEF:indoor=humidities.rrd:indoor:MAX",
+     "DEF:outdoor=humidities.rrd:outdoor:LAST",
+     "DEF:indoor=humidities.rrd:indoor:LAST",
      "LINE1:outdoor#ff0000:Outdoor",
      "GPRINT:outdoor:LAST:%2.1lf%%",
      "COMMENT:\l",
@@ -274,7 +272,7 @@ while True:
       "-c", "MGRID#DDDDDD33",
       "-c", "FRAME#18191A",
       "-c", "ARROW#333333",
-      "DEF:indoor=pressures.rrd:indoor:MAX",
+      "DEF:indoor=pressures.rrd:indoor:LAST",
       "LINE1:indoor#00ff00:Local",
       "GPRINT:indoor:LAST:%.2lf hPa",
       "COMMENT:\l"
@@ -304,7 +302,7 @@ while True:
      "-c", "MGRID#DDDDDD33",
      "-c", "FRAME#18191A",
      "-c", "ARROW#333333",
-     "DEF:indoor=gas.rrd:indoor:AVERAGE",
+     "DEF:indoor=gas.rrd:indoor:LAST",
      "LINE1:indoor#0000ff:Indoor",
      "GPRINT:indoor:LAST:%.1lf%s Ω",
      "COMMENT:\l"
@@ -334,8 +332,8 @@ while True:
       "-c", "MGRID#DDDDDD33",
       "-c", "FRAME#18191A",
       "-c", "ARROW#333333",
-      "DEF:pi=temperatures.rrd:pi:MAX",
-      "DEF:picow=temperatures.rrd:picow:MAX",
+      "DEF:pi=temperatures.rrd:pi:LAST",
+      "DEF:picow=temperatures.rrd:picow:LAST",
       "LINE1:picow#ff0000:Pico W MCU",
       "GPRINT:picow:LAST:%2.1lf °C",
       "CDEF:picow-f=picow,1.8,*,32,+", "GPRINT:picow-f:LAST:%2.1lf °F",

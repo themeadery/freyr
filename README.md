@@ -63,10 +63,10 @@ I2C and 1-Wire interfaces must be turned on in ```$ sudo raspi-config```
 #### Create RRD databases
 
 ```bash
-$ rrdtool create temperatures.rrd --step 60 DS:outdoor:GAUGE:120:-20:55 DS:indoor:GAUGE:120:0:55 DS:tank:GAUGE:120:0:55 DS:pi:GAUGE:120:0:100 DS:picow:GAUGE:120:0:100 RRA:MAX:0.5:1:1440
-$ rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:GAUGE:120:0:100 RRA:MAX:0.5:1:1440
-$ rrdtool create pressures.rrd --step 60 DS:indoor:GAUGE:120:800:1100 RRA:MAX:0.5:1:1440
-$ rrdtool create gas.rrd --step 60 DS:indoor:GAUGE:120:50:50000 RRA:AVERAGE:0.5:1:1440
+$ rrdtool create temperatures.rrd --step 60 DS:outdoor:GAUGE:120:-20:55 DS:indoor:GAUGE:120:0:55 DS:tank:GAUGE:120:0:55 DS:pi:GAUGE:120:0:100 DS:picow:GAUGE:120:0:100 RRA:LAST:0.5:1:1440
+$ rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:GAUGE:120:0:100 RRA:LAST:0.5:1:1440
+$ rrdtool create pressures.rrd --step 60 DS:indoor:GAUGE:120:800:1100 RRA:LAST:0.5:1:1440
+$ rrdtool create gas.rrd --step 60 DS:indoor:GAUGE:120:50:50000 RRA:LAST:0.5:1:1440
 ```
 
 This will create databases with a 60 second interval, 120 second heartbeat timeout, between -20 and 55 degrees Celsius for the outdoor sensor, between 0 and 55 degrees Celsius for the indoor sensors, 0-100 degrees Celsius for the pi CPU sensor, 0-100% relative humidity, 800-1100 hPa pressure, and 50-50,000 ohms gas resistance with 24 hours of data before rolling over.
