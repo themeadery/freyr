@@ -4,3 +4,4 @@ pi/reefer-private.py
 *.zip
 Pi Pico W/secrets.py
 Pi Pico W/webrepl_cfg.py
+/relay
