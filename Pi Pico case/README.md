@@ -1,0 +1,1 @@
+"Case_Lower_No_Vent.stl" needs to be scaled to 10% to be the correct size

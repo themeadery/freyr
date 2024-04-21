@@ -1,8 +1,7 @@
 *.txt
 archive
-FT232H/generated files
-FT232H/learning
-FT232H/old
-FT232H/reefer-private.py
 pi/reefer-private.py
-pi/*.zip
+*.zip
+Pi Pico W/secrets.py
+Pi Pico W/webrepl_cfg.py
+/relay

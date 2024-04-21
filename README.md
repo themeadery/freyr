@@ -6,65 +6,40 @@ tl;dr Yeah, but what does it look like?
 
 This started out as a project to control my reef aquarium, hence the name. It then morphed into a simple Python script to check the indoor temp/humidity and compare it with the outdoors using OpenWeather API. Update: It now monitors the temperature of my aquarium!
 
-Note: This project is now split into a FT232H version and a Raspberry Pi version. Updated 11/11/2021
-
-## FT232H
-
-The hardware is a FT232H from Adafruit and a Si7021 sensor. The FT232H is a pain in the butt to set up from scratch, espcially on Windows. I use Zadig to change the driver to libusbK, then the environment variable must be set "BLINKA_FT232H=1". Use the hack to refresh the environment variables without rebooting (now included, see ```RefreshEnv.cmd```), then the Python script should work. If you ever switch USB ports you must use Zadig to change the driver again.
-
-Adafruit has written a guide for the FT232H, but it is confusing and becoming out of date: https://learn.adafruit.com/circuitpython-on-any-computer-with-ft232h
-
-### Dependencies
-- Python 3
-- pip3
-- pyftdi
-- pyserial
-- pyusb
-- Adafruit-Blinka
-- adafruit-circuitpython-busdevice
-- adafruit-circuitpython-si7021
-- Adafruit-PlatformDetect
-- Adafruit-PureIO
-- requests
-- charset_normalizer
-- certifi
-- urllib3
-- idna
-- rrdtool (added to system $PATH/%PATH%/Path)
-
-### RRD
-#### Create RRD databases:
-
-```
-$ rrdtool create temperatures-c.rrd --step 60 DS:outdoor:GAUGE:120:0:55 DS:indoor:GAUGE:120:0:55 RRA:MAX:0.5:1:1440
-$ rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:GAUGE:120:0:100 RRA:MAX:0.5:1:1440
-```
-This will create databases with a 60 second interval, 120 second heartbeat timeout, between 0 and 55 degrees Celsius, and 0-100% relative humidity, with 24 hours of data before rolling over. You may need to configure for lower than 0 degrees Celsius, but I live in the second hottest place on the planet so these are my settings.
-
-More information here: https://michael.bouvy.net/post/graph-data-rrdtool-sensors-arduino
-
-### HTML
-
-```index.html```
-
-Very simple HTML to display both graphs. This does not need a webserver. It can be opened locally and will refresh the entire page every 60 seconds.
-
-Note: This version is no longer under active development. See Pi version below.
-
 ## Raspberry Pi
 
 I moved the project from a FT232H to a Raspberry Pi Zero W and added a DS18B20 waterproof temperature sensor for an aquarium. With plenty of GPIO on the Pi and relays in hand, I plan on controlling pumps/lights/etc in the future.
 
 ### Hardware
-#### Si7021
+
+#### BME680
+
 https://pinout.xyz/pinout/i2c
+
+- VCC to 3v3 (pin 1)
+- GND to ground (any)
+- SCL to GPIO 3 [I2C1 SCL Clock] (pin 5)
+- SDA to GPIO 2 [I2C1 SDA Data] (pin 3)
+- SDO to nothing
+- CS to ground (any)
+
+During testing I kept having failures of the sensor until I discovered an unofficial fix that contradicts the official documentation a bit. CS must be run to a ground pin. All of a sudden the sensor was rock solid stable for weeks after that.
+
+#### Si7021
+
+https://pinout.xyz/pinout/i2c
+
 - VIN to 3v3 (pin 1)
 - GND to ground (pin 9)
 - SCL to GPIO 3 [I2C1 SCL Clock] (pin 5)
 - SDA to GPIO 2 [I2C1 SDA Data] (pin 3)
 
+This sensor always seems to work no matter what and is very accurate. I am impressed with the performance. I am currently using it outdoors on a Pico W, so the wiring is different than shown above.
+
 #### DS18B20
+
 https://pinout.xyz/pinout/1_wire
+
 - Red Wire to 5v (pin 2)
 - Blue Wire to ground (pin 6 or 9)
 - Yellow Wire to GPIO 4 [Data] (pin 7)
@@ -75,7 +50,7 @@ According to my testing, Google searches, and the DS18B20 datasheet 3v3 is not e
 ### Dependencies
 
 You can satisfy pretty much all dependencies with these commands on a fresh Pi:
-```
+```bash
 $ sudo apt install git nginx rrdtool python3-pip
 $ sudo pip install adafruit-circuitpython-si7021
 $ sudo pip install git+https://github.com/nicmcd/vcgencmd.git
@@ -84,14 +59,17 @@ $ sudo pip install git+https://github.com/nicmcd/vcgencmd.git
 I2C and 1-Wire interfaces must be turned on in ```$ sudo raspi-config```
 
 ### RRD
-#### Create RRD databases:
 
+#### Create RRD databases
+
+```bash
+$ rrdtool create temperatures.rrd --step 60 DS:outdoor:GAUGE:120:-20:55 DS:indoor:GAUGE:120:0:55 DS:tank:GAUGE:120:0:55 DS:pi:GAUGE:120:0:100 DS:picow:GAUGE:120:0:100 RRA:LAST:0.5:1:1440
+$ rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:GAUGE:120:0:100 RRA:LAST:0.5:1:1440
+$ rrdtool create pressures.rrd --step 60 DS:indoor:GAUGE:120:800:1100 RRA:LAST:0.5:1:1440
+$ rrdtool create gas.rrd --step 60 DS:indoor:GAUGE:120:50:100000 RRA:LAST:0.5:1:1440
 ```
-$ rrdtool create temperatures.rrd --step 60 DS:outdoor:GAUGE:120:0:55 DS:indoor:GAUGE:120:0:55 DS:tank:GAUGE:120:0:55 DS:pi:GAUGE:120:0:100 RA:MAX:0.5:1:1440
-$ rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:GAUGE:120:0:100 RRA:MAX:0.5:1:1440
-$ rrdtool create pressures.rrd --step 60 DS:outdoor:GAUGE:120:800:1100 RRA:MAX:0.5:1:1440
-```
-This will create databases with a 60 second interval, 120 second heartbeat timeout, between 0 and 55 degrees Celsius for the air/water sensors, 0-100 degrees Celsius for the pi CPU sensor, 0-100% relative humidity, and 800-1100 hPa pressure with 24 hours of data before rolling over. You may need to configure for lower than 0 degrees Celsius, but I live in the second hottest place on the planet so these are my settings.
+
+This will create databases with a 60 second interval, 120 second heartbeat timeout, between -20 and 55 degrees Celsius for the outdoor sensor, between 0 and 55 degrees Celsius for the indoor sensors, 0-100 degrees Celsius for the pi CPU sensor, 0-100% relative humidity, 800-1100 hPa pressure, and 50-100,000 ohms gas resistance with 24 hours of data before rolling over.
 
 More information here: https://michael.bouvy.net/post/graph-data-rrdtool-sensors-arduino
 
@@ -99,7 +77,7 @@ More information here: https://michael.bouvy.net/post/graph-data-rrdtool-sensors
 
 ```index.html```
 
-Very simple HTML to display the graphs. You will likely want a webserver for this. I use nginx. It refreshes the page every 60 seconds. Sometimes this generates a miss while the PNG files are being generated.
+Very simple HTML to display the graphs. You will likely want a webserver for this. I use nginx. It refreshes the page every 30 seconds in an attempt to reduce misses while the graphs are being generated. This doesn't work very well, so I would love to implement a server-side generated trigger for refresh, more like a "push" based system. Unfortunately, when I first looked into implementing this it looked way too complicated for my motivation at the time. Looking for better solutions.
 
 ### Relay
 
@@ -115,7 +93,7 @@ I used ```relay.py``` for a while, but there's no need to have a constantly runn
 
 Use the example below to turn a light on at 7:00 AM and off at 7:00 PM:
 
-```
+```bash
 $ crontab -e
 ```
 
@@ -127,7 +105,7 @@ $ crontab -e
 
 ### More Advanced Relay Control
 
-```
+```bash
 $ pip install flask
 $ python relayControl.py
 ```
@@ -142,11 +120,11 @@ The API's I am poking prove to be a continuous source of beard-pulling as I try 
 
 systemd to the rescue?
 
-```
+```bash
 $ mkdir -p .config/systemd/user
 $ cp reefer.service .config/systemd/user
-$ systemctl --user start reefer.service
-$ systemctl --user enable service
+$ systemctl --user start reefer
+$ systemctl --user enable reefer
 $ sudo loginctl enable-linger pi
 ```
 
@@ -168,11 +146,18 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
-My next move will be to upgrade to a BME680 sensor that includes pressure data so I don't have to poll an API for it. The next upgrade after that would be to put another Pi Zero 2 W/W outside with a BME680 in a white 3D printed "Stevenson screen" enclosure.
-
 I realize this is turning more into a glorified weather station app, but that's where my interests have led me!
 
 #### TODO
 
-- Move generated files to tmpfs as to not kill the sdcard with all the writes.
+- ~~Move generated files to tmpfs as to not kill the sdcard with all the writes.~~
+- Document tmpfs and symbolic link to files
 - Maybe switch from nginx to built-in Python webserver to further reduce system load, configuration, writes to sdcard, etc.
+- Remove DS18B20 references and documentation
+- Add BME680 documentation
+- ~~Add Pi Pico W + Si7021 sattelite sensor code~~ and documentation
+- ~~Squash indoor/outdoor pressures to "local"~~
+- Output data to Wunderground
+- Break out more things in main loop to functions and use main loop for flow control only (aka refactoring?)
+- Add High/Low stats
+- ~~Log rotation using logging.handlers.RotatingFileHandler~~
