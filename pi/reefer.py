@@ -26,7 +26,7 @@ logging.basicConfig(
 sessionSatellite = requests.Session() # Pi Pico W + si7021 sensor API
 
 # Station altitude in meters
-sta_alt = 276.0
+sta_alt = 280.0
 
 # Initialize BME680
 try:
