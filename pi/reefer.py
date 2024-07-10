@@ -61,8 +61,42 @@ def sta_press_to_mslp(sta_press, temp_c):
     mslp = sta_press + ((sta_press * 9.80665 * sta_alt)/(287 * (273 + temp_c + (sta_alt/400))))
     return mslp
 
+# Outdoor Pi Pico W + Si7021 sensor function
+def get_outdoor():
+    logging.info("")
+    logging.info("Outdoor\n")
+    try:
+        # Initialize variables so if request fails graphs still populate with NaN
+        outdoor_c = 'U'
+        outdoor_hum = 'U'
+        picow_temp_c = 'U'
+
+        responseSatellite = sessionSatellite.get('http://192.168.0.5', timeout=10) # Don't use HTTPS
+        responseSatellite.raise_for_status() # If error, try to catch it in except clauses below
+        # Code below here will only run if the request is successful
+        outdoor_c = responseSatellite.json()['temperature']
+        outdoor_f = c_to_f(outdoor_c)
+        outdoor_hum = responseSatellite.json()['humidity']
+        picow_temp_c = responseSatellite.json()['mcu']
+        picow_temp_f = c_to_f(picow_temp_c)
+        logging.info(f"Temperature: {outdoor_c:.2f} °C | {outdoor_f:.2f} °F")
+        logging.info(f"Humidity: {outdoor_hum:.1f} %")
+        logging.info(f"Pi Pico W: {picow_temp_c:.2f} °C | {picow_temp_f:.2f} °F")
+        # Code above here will only run if the request is successful
+    except requests.exceptions.HTTPError as errh:
+        logging.error(errh)
+    except requests.exceptions.ConnectionError as errc:
+        logging.error(errc)
+    except requests.exceptions.Timeout as errt:
+        logging.error(errt)
+    except requests.exceptions.RequestException as err:
+        logging.error(err)
+    return outdoor_c,outdoor_hum,picow_temp_c
+
 # Indoor BME680 function
 def get_indoor():
+    logging.info("")
+    logging.info("Indoor\n")
     if sensor.get_sensor_data():
         temp_c = sensor.data.temperature - 0.5 # Insert sensor error correction here if needed
         temp_f = c_to_f(temp_c)
@@ -92,50 +126,8 @@ def pi_temp():
     logging.info(f"Pi Zero W: {temp_c:.2f} °C | {temp_f:.2f} °F")
     return temp_c, temp_f
 
-# Main Loop
-while True:
-    started = datetime.now() # Start timing the operation
-
-    logging.info("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-    logging.info("")
-    logging.info("Outdoor\n")
-
-    try:
-        # Initialize variables so if request fails graphs still populate with NaN
-        outdoor_c = 'U'
-        outdoor_hum = 'U'
-        picow_temp_c = 'U'
-
-        responseSatellite = sessionSatellite.get('http://192.168.0.5', timeout=10) # Don't use HTTPS
-        responseSatellite.raise_for_status() # If error, try to catch it in except clauses below
-
-        # Code below here will only run if the request is successful
-        outdoor_c = responseSatellite.json()['temperature']
-        outdoor_f = c_to_f(outdoor_c)
-        outdoor_hum = responseSatellite.json()['humidity']
-        picow_temp_c = responseSatellite.json()['mcu']
-        picow_temp_f = c_to_f(picow_temp_c)
-        logging.info(f"Temperature: {outdoor_c:.2f} °C | {outdoor_f:.2f} °F")
-        logging.info(f"Humidity: {outdoor_hum:.1f} %")
-        logging.info(f"Pi Pico W: {picow_temp_c:.2f} °C | {picow_temp_f:.2f} °F")
-        # Code above here will only run if the request is successful
-
-    except requests.exceptions.HTTPError as errh:
-        logging.error(errh)
-    except requests.exceptions.ConnectionError as errc:
-        logging.error(errc)
-    except requests.exceptions.Timeout as errt:
-        logging.error(errt)
-    except requests.exceptions.RequestException as err:
-        logging.error(err)
-
-    logging.info("")
-    logging.info("Indoor\n")
-
-    indoor_c, indoor_hum, indoor_press, indoor_gas = get_indoor()
-    tank_c = 'U' # Tank sensor is broken
-    pi_temp_c, pi_temp_f = pi_temp()
-
+# Update RRD databases function
+def update_rrd(outdoor_c, outdoor_hum, picow_temp_c, indoor_c, indoor_hum, indoor_press, indoor_gas, tank_c, pi_temp_c):
     logging.info("")
     logging.info("Updating RRD databases...\n")
 
@@ -173,6 +165,8 @@ while True:
 
     logging.info("Done")
 
+# RRDtool graphing function
+def create_graphs():
     logging.info("Creating graphs...")
     result = subprocess.run([
      "rrdtool", "graph",
@@ -350,6 +344,18 @@ while True:
 
     logging.info("Done")
 
+# Main Loop
+while True:
+    started = datetime.now() # Start timing the operation
+
+    logging.info("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~") # Start logging cycle with a row of tildes to differentiate
+    outdoor_c, outdoor_hum, picow_temp_c = get_outdoor()
+    indoor_c, indoor_hum, indoor_press, indoor_gas = get_indoor()
+    tank_c = 'U' # Tank sensor is broken so set to NaN
+    pi_temp_c, pi_temp_f = pi_temp()
+    update_rrd(outdoor_c, outdoor_hum, picow_temp_c, indoor_c, indoor_hum, indoor_press, indoor_gas, tank_c, pi_temp_c)
+    create_graphs()
+    
     ended = datetime.now() # Stop timing the operation
     # Compute the amount of time it took to run the loop above
     # then sleep for the remaining time left
