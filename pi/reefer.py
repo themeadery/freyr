@@ -279,13 +279,14 @@ def create_graphs():
     result = subprocess.run([
      "rrdtool", "graph",
      "/mnt/tmp/gas.png",
+     "--end", "now", "--start", "end-1760m", "--step", "120",
      "--font", "DEFAULT:10:",
      "--font", "AXIS:8:",
      "--title", "Gas Resistance",
      "--vertical-label", "Ω",
      "--right-axis", "1:0",
      "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
-     "--width", "865", "--height", "300",
+     "--width", "880", "--height", "300",
      "--alt-autoscale",
      "--border", "0",
      "--slope-mode",
@@ -296,9 +297,14 @@ def create_graphs():
      "-c", "MGRID#DDDDDD33",
      "-c", "FRAME#18191A",
      "-c", "ARROW#333333",
+     "--disable-rrdtool-tag",
      "DEF:indoor=gas.rrd:indoor:LAST",
+     "VDEF:indoorMax=indoor,MAXIMUM",
+     "VDEF:indoorMin=indoor,MINIMUM",
      "LINE1:indoor#0000ff:Indoor",
      "GPRINT:indoor:LAST:%.1lf%s Ω",
+     "GPRINT:indoorMax:Max\: %.1lf%s Ω",
+     "GPRINT:indoorMin:Min\: %.1lf%s Ω",
      "COMMENT:\l"
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
