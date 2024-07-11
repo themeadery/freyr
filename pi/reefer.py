@@ -168,18 +168,13 @@ def update_rrd(outdoor_c, outdoor_hum, picow_temp_c, indoor_c, indoor_hum, indoo
 # RRDtool graphing function
 def create_graphs():
     logging.info("Creating graphs...")
-    result = subprocess.run([
-     "rrdtool", "graph",
-     "/mnt/tmp/temperatures.png",
+
+    # Reduce duplicate lines of code
+    common_args = [
      "--end", "now", "--start", "end-1760m", "--step", "120",
      "--font", "DEFAULT:10:",
      "--font", "AXIS:8:",
-     "--title", "Temperature",
-     "--vertical-label", "Celsius",
-     "--right-axis-label", "Fahrenheit",
-     "--right-axis", "1.8:32",
      "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
-     "--width", "880", "--height", "340",
      "--alt-autoscale",
      "--border", "0",
      "--slope-mode",
@@ -190,7 +185,17 @@ def create_graphs():
      "-c", "MGRID#DDDDDD33",
      "-c", "FRAME#18191A",
      "-c", "ARROW#333333",
-     "--disable-rrdtool-tag",
+     "--disable-rrdtool-tag"
+    ]
+
+    result = subprocess.run([
+     "rrdtool", "graph",
+     "/mnt/tmp/temperatures.png",
+     "--title", "Temperature",
+     "--vertical-label", "Celsius",
+     "--right-axis-label", "Fahrenheit",
+     "--right-axis", "1.8:32",
+     "--width", "880", "--height", "340",
      "DEF:outdoor=temperatures.rrd:outdoor:LAST",
      "DEF:indoor=temperatures.rrd:indoor:LAST",
      "DEF:tank=temperatures.rrd:tank:LAST",
@@ -205,8 +210,8 @@ def create_graphs():
      "LINE1:tank#00ff00:Tank",
      "GPRINT:tank:LAST:   %2.1lf °C",
      "CDEF:tank-f=tank,1.8,*,32,+", "GPRINT:tank-f:LAST:%2.1lf °F",
-     "COMMENT:\l"
-     ], capture_output=True, text=True)
+     "COMMENT:\l",
+     ] + common_args, capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
     if result.stderr:
@@ -215,25 +220,11 @@ def create_graphs():
     result = subprocess.run([
      "rrdtool", "graph",
      "/mnt/tmp/humidities.png",
-     "--end", "now", "--start", "end-1760m", "--step", "120",
-     "--font", "DEFAULT:10:",
-     "--font", "AXIS:8:",
      "--title", "Humidity",
      "--vertical-label", "Relative (%)",
+     "--right-axis-label", "Relative (%)",
      "--right-axis", "1:0",
-     "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
      "--width", "880", "--height", "300",
-     "--alt-autoscale",
-     "--border", "0",
-     "--slope-mode",
-     "-c", "BACK#333333",
-     "-c", "CANVAS#18191A",
-     "-c", "FONT#DDDDDD",
-     "-c", "GRID#DDDDDD1A",
-     "-c", "MGRID#DDDDDD33",
-     "-c", "FRAME#18191A",
-     "-c", "ARROW#333333",
-     "--disable-rrdtool-tag",
      "DEF:outdoor=humidities.rrd:outdoor:LAST",
      "DEF:indoor=humidities.rrd:indoor:LAST",
      "LINE1:outdoor#ff0000:Outdoor",
@@ -241,8 +232,8 @@ def create_graphs():
      "COMMENT:\l",
      "LINE1:indoor#0000ff:Indoor",
      "GPRINT:indoor:LAST: %2.1lf%%",
-     "COMMENT:\l"
-     ], capture_output=True, text=True)
+     "COMMENT:\l",
+     ] + common_args, capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
     if result.stderr:
@@ -251,32 +242,19 @@ def create_graphs():
     result = subprocess.run([
       "rrdtool", "graph",
       "/mnt/tmp/pressures.png",
-      "--end", "now", "--start", "end-1760m", "--step", "120",
-      "--font", "DEFAULT:10:",
-      "--font", "AXIS:8:",
       "--title", "Barometric Pressure (MSL)",
       "--vertical-label", "hPa",
+      "--right-axis-label", "hPa",
       "--right-axis", "1:0", "--right-axis-format", "%4.0lf",
-      "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
       "--width", "880", "--height", "300",
       "--lower-limit", "1002", "--upper-limit", "1030",
       "--y-grid", "1:2",
       "--units-exponent", "0",
-      "--border", "0",
-      "--slope-mode",
-      "-c", "BACK#333333",
-      "-c", "CANVAS#18191A",
-      "-c", "FONT#DDDDDD",
-      "-c", "GRID#DDDDDD1A",
-      "-c", "MGRID#DDDDDD33",
-      "-c", "FRAME#18191A",
-      "-c", "ARROW#333333",
-      "--disable-rrdtool-tag",
       "DEF:indoor=pressures.rrd:indoor:LAST",
       "LINE1:indoor#00ff00:Local",
       "GPRINT:indoor:LAST:%.2lf hPa",
-      "COMMENT:\l"
-     ], capture_output=True, text=True)
+      "COMMENT:\l",
+     ] + common_args, capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
     if result.stderr:
@@ -285,25 +263,11 @@ def create_graphs():
     result = subprocess.run([
      "rrdtool", "graph",
      "/mnt/tmp/gas.png",
-     "--end", "now", "--start", "end-1760m", "--step", "120",
-     "--font", "DEFAULT:10:",
-     "--font", "AXIS:8:",
      "--title", "Gas Resistance",
      "--vertical-label", "Ω",
+     "--right-axis-label", "Ω",
      "--right-axis", "1:0",
-     "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
      "--width", "880", "--height", "300",
-     "--alt-autoscale",
-     "--border", "0",
-     "--slope-mode",
-     "-c", "BACK#333333",
-     "-c", "CANVAS#18191A",
-     "-c", "FONT#DDDDDD",
-     "-c", "GRID#DDDDDD1A",
-     "-c", "MGRID#DDDDDD33",
-     "-c", "FRAME#18191A",
-     "-c", "ARROW#333333",
-     "--disable-rrdtool-tag",
      "DEF:indoor=gas.rrd:indoor:LAST",
      "VDEF:indoorMax=indoor,MAXIMUM",
      "VDEF:indoorMin=indoor,MINIMUM",
@@ -311,8 +275,8 @@ def create_graphs():
      "GPRINT:indoor:LAST:%.1lf%s Ω",
      "GPRINT:indoorMax:Max\: %.1lf%s Ω",
      "GPRINT:indoorMin:Min\: %.1lf%s Ω",
-     "COMMENT:\l"
-     ], capture_output=True, text=True)
+     "COMMENT:\l",
+     ] + common_args, capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
     if result.stderr:
@@ -321,25 +285,11 @@ def create_graphs():
     result = subprocess.run([
       "rrdtool", "graph",
       "/mnt/tmp/pi.png",
-      "--end", "now", "--start", "end-1760m", "--step", "120",
-      "--font", "DEFAULT:10:",
-      "--font", "AXIS:8:",
       "--title", "Pi Temperatures",
       "--vertical-label", "Celsius",
       "--right-axis-label", "Fahrenheit",
       "--right-axis", "1.8:32",
-      "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
       "--width", "880", "--height", "120",
-      "--border", "0",
-      "--slope-mode",
-      "-c", "BACK#333333",
-      "-c", "CANVAS#18191A",
-      "-c", "FONT#DDDDDD",
-      "-c", "GRID#DDDDDD1A",
-      "-c", "MGRID#DDDDDD33",
-      "-c", "FRAME#18191A",
-      "-c", "ARROW#333333",
-      "--disable-rrdtool-tag",
       "DEF:pi=temperatures.rrd:pi:LAST",
       "DEF:picow=temperatures.rrd:picow:LAST",
       "LINE1:picow#ff0000:Pico W MCU",
@@ -349,8 +299,8 @@ def create_graphs():
       "LINE1:pi#0000ff:Zero W CPU",
       "GPRINT:pi:LAST:%2.1lf °C",
       "CDEF:pi-f=pi,1.8,*,32,+", "GPRINT:pi-f:LAST:%2.1lf °F",
-      "COMMENT:\l"
-     ], capture_output=True, text=True)
+      "COMMENT:\l",
+     ] + common_args, capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
     if result.stderr:

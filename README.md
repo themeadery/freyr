@@ -161,4 +161,4 @@ I realize this is turning more into a glorified weather station app, but that's 
 - ~~Break out more things in main loop to functions and use main loop for flow control only (aka refactoring?)~~
 - ~~Add High/Low stats~~
 - ~~Log rotation using logging.handlers.RotatingFileHandler~~
-- Break out graphing args to variables, squash common args to reusable variable
+- ~~Break out graphing args to variables, squash common args to reusable variable~~
