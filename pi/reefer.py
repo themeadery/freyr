@@ -171,6 +171,7 @@ def create_graphs():
     result = subprocess.run([
      "rrdtool", "graph",
      "/mnt/tmp/temperatures.png",
+     "--end", "now", "--start", "end-1760m", "--step", "120",
      "--font", "DEFAULT:10:",
      "--font", "AXIS:8:",
      "--title", "Temperature",
@@ -178,7 +179,7 @@ def create_graphs():
      "--right-axis-label", "Fahrenheit",
      "--right-axis", "1.8:32",
      "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
-     "--width", "860", "--height", "340",
+     "--width", "880", "--height", "340",
      "--alt-autoscale",
      "--border", "0",
      "--slope-mode",
@@ -189,6 +190,7 @@ def create_graphs():
      "-c", "MGRID#DDDDDD33",
      "-c", "FRAME#18191A",
      "-c", "ARROW#333333",
+     "--disable-rrdtool-tag",
      "DEF:outdoor=temperatures.rrd:outdoor:LAST",
      "DEF:indoor=temperatures.rrd:indoor:LAST",
      "DEF:tank=temperatures.rrd:tank:LAST",
@@ -213,13 +215,14 @@ def create_graphs():
     result = subprocess.run([
      "rrdtool", "graph",
      "/mnt/tmp/humidities.png",
+     "--end", "now", "--start", "end-1760m", "--step", "120",
      "--font", "DEFAULT:10:",
      "--font", "AXIS:8:",
      "--title", "Humidity",
      "--vertical-label", "Relative (%)",
      "--right-axis", "1:0",
      "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
-     "--width", "865", "--height", "300",
+     "--width", "880", "--height", "300",
      "--alt-autoscale",
      "--border", "0",
      "--slope-mode",
@@ -230,6 +233,7 @@ def create_graphs():
      "-c", "MGRID#DDDDDD33",
      "-c", "FRAME#18191A",
      "-c", "ARROW#333333",
+     "--disable-rrdtool-tag",
      "DEF:outdoor=humidities.rrd:outdoor:LAST",
      "DEF:indoor=humidities.rrd:indoor:LAST",
      "LINE1:outdoor#ff0000:Outdoor",
@@ -247,13 +251,14 @@ def create_graphs():
     result = subprocess.run([
       "rrdtool", "graph",
       "/mnt/tmp/pressures.png",
+      "--end", "now", "--start", "end-1760m", "--step", "120",
       "--font", "DEFAULT:10:",
       "--font", "AXIS:8:",
       "--title", "Barometric Pressure (MSL)",
       "--vertical-label", "hPa",
       "--right-axis", "1:0", "--right-axis-format", "%4.0lf",
       "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
-      "--width", "865", "--height", "300",
+      "--width", "880", "--height", "300",
       "--lower-limit", "1002", "--upper-limit", "1030",
       "--y-grid", "1:2",
       "--units-exponent", "0",
@@ -266,6 +271,7 @@ def create_graphs():
       "-c", "MGRID#DDDDDD33",
       "-c", "FRAME#18191A",
       "-c", "ARROW#333333",
+      "--disable-rrdtool-tag",
       "DEF:indoor=pressures.rrd:indoor:LAST",
       "LINE1:indoor#00ff00:Local",
       "GPRINT:indoor:LAST:%.2lf hPa",
@@ -315,6 +321,7 @@ def create_graphs():
     result = subprocess.run([
       "rrdtool", "graph",
       "/mnt/tmp/pi.png",
+      "--end", "now", "--start", "end-1760m", "--step", "120",
       "--font", "DEFAULT:10:",
       "--font", "AXIS:8:",
       "--title", "Pi Temperatures",
@@ -322,7 +329,7 @@ def create_graphs():
       "--right-axis-label", "Fahrenheit",
       "--right-axis", "1.8:32",
       "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
-      "--width", "860", "--height", "120",
+      "--width", "880", "--height", "120",
       "--border", "0",
       "--slope-mode",
       "-c", "BACK#333333",
@@ -332,6 +339,7 @@ def create_graphs():
       "-c", "MGRID#DDDDDD33",
       "-c", "FRAME#18191A",
       "-c", "ARROW#333333",
+      "--disable-rrdtool-tag",
       "DEF:pi=temperatures.rrd:pi:LAST",
       "DEF:picow=temperatures.rrd:picow:LAST",
       "LINE1:picow#ff0000:Pico W MCU",
@@ -361,7 +369,7 @@ while True:
     pi_temp_c, pi_temp_f = pi_temp()
     update_rrd(outdoor_c, outdoor_hum, picow_temp_c, indoor_c, indoor_hum, indoor_press, indoor_gas, tank_c, pi_temp_c)
     create_graphs()
-    
+
     ended = datetime.now() # Stop timing the operation
     # Compute the amount of time it took to run the loop above
     # then sleep for the remaining time left
