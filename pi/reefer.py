@@ -5,6 +5,7 @@ import bme680
 import requests
 import subprocess
 import vcgencmd
+import math
 import logging
 from logging.handlers import RotatingFileHandler
 
@@ -61,15 +62,20 @@ def sta_press_to_mslp(sta_press, temp_c):
     mslp = sta_press + ((sta_press * 9.80665 * sta_alt)/(287 * (273 + temp_c + (sta_alt/400))))
     return mslp
 
+# Dewpoint calculation function
+def calc_dewpoint(humidity, temp_c):
+    a = 17.625
+    b = 243.04
+    alpha = math.log(humidity/100.0) + ((a * temp_c) / (b + temp_c))
+    return (b * alpha) / (a - alpha)
+
 # Outdoor Pi Pico W + Si7021 sensor function
 def get_outdoor():
     logging.info("")
     logging.info("Outdoor\n")
     try:
         # Initialize variables so if request fails graphs still populate with NaN
-        outdoor_c = 'U'
-        outdoor_hum = 'U'
-        picow_temp_c = 'U'
+        outdoor_c = outdoor_hum = outdoor_dew = picow_temp_c ='U'
 
         responseSatellite = sessionSatellite.get('http://192.168.0.5', timeout=10) # Don't use HTTPS
         responseSatellite.raise_for_status() # If error, try to catch it in except clauses below
@@ -77,11 +83,13 @@ def get_outdoor():
         outdoor_c = responseSatellite.json()['temperature']
         outdoor_f = c_to_f(outdoor_c)
         outdoor_hum = responseSatellite.json()['humidity']
+        outdoor_dew = calc_dewpoint(outdoor_hum, outdoor_c)
         picow_temp_c = responseSatellite.json()['mcu']
         picow_temp_f = c_to_f(picow_temp_c)
-        logging.info(f"Temperature: {outdoor_c:.2f} °C | {outdoor_f:.2f} °F")
-        logging.info(f"Humidity: {outdoor_hum:.1f} %")
-        logging.info(f"Pi Pico W: {picow_temp_c:.2f} °C | {picow_temp_f:.2f} °F")
+        logging.info(f"Temperature: {outdoor_c} °C | {outdoor_f} °F")
+        logging.info(f"Humidity: {outdoor_hum} %")
+        logging.info(f"Dewpoint: {outdoor_dew} °C")
+        logging.info(f"Pi Pico W: {picow_temp_c} °C | {picow_temp_f} °F")
         # Code above here will only run if the request is successful
     except requests.exceptions.HTTPError as errh:
         logging.error(errh)
@@ -91,7 +99,7 @@ def get_outdoor():
         logging.error(errt)
     except requests.exceptions.RequestException as err:
         logging.error(err)
-    return outdoor_c,outdoor_hum,picow_temp_c
+    return outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c
 
 # Indoor BME680 function
 def get_indoor():
@@ -100,24 +108,26 @@ def get_indoor():
     if sensor.get_sensor_data():
         temp_c = sensor.data.temperature - 0.5 # Insert sensor error correction here if needed
         temp_f = c_to_f(temp_c)
-        logging.info(f"Temperature: {temp_c:.2f} °C | {temp_f:.2f} °F")
+        logging.info(f"Temperature: {temp_c} °C | {temp_f} °F")
         hum = sensor.data.humidity
-        logging.info(f"Humidity: {hum:.1f}%")
+        logging.info(f"Humidity: {hum}%")
+        dew = calc_dewpoint(hum, temp_c)
+        logging.info(f"Dewpoint: {dew} °C")
         sta_press = sensor.data.pressure
         logging.info(f"Raw Pressure: {sta_press} hPa raw station pressure")
         press = sta_press_to_mslp(sta_press, temp_c) # convert to MSLP
-        logging.info(f"Pressure: {press:.2f} hPa MSLP") # converted to MSLP
+        logging.info(f"Pressure: {press} hPa MSLP") # converted to MSLP
         if sensor.data.heat_stable:
             gas = sensor.data.gas_resistance
             logging.info(f"Gas Resistance: {gas} Ω")
         else:
             gas = 'U'
             logging.warning("No data from gas sensor")
-        return temp_c, hum, press, gas
+        return temp_c, hum, dew, press, gas
     else:
-        temp_c = hum = press = gas = 'U'
+        temp_c = hum = dew = press = gas = 'U' # Set all variables to NaN if sensor data fails
         logging.error("No sensor data available")
-        return temp_c, hum, press, gas
+        return temp_c, hum, dew, press, gas
 
 # Pi Zero W Temperature function
 def pi_temp():
@@ -127,12 +137,12 @@ def pi_temp():
     return temp_c, temp_f
 
 # Update RRD databases function
-def update_rrd(outdoor_c, outdoor_hum, picow_temp_c, indoor_c, indoor_hum, indoor_press, indoor_gas, tank_c, pi_temp_c):
+def update_rrd(outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c, indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas, pi_temp_c):
     logging.info("")
     logging.info("Updating RRD databases...\n")
 
     result = subprocess.run(["rrdtool", "updatev", "temperatures.rrd",
-     f"N:{outdoor_c}:{indoor_c}:{tank_c}:{pi_temp_c}:{picow_temp_c}"
+     f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}"
      ], capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
@@ -171,7 +181,8 @@ def create_graphs():
 
     # Reduce duplicate lines of code
     common_args = [
-     "--end", "now", "--start", "end-1760m", "--step", "120",
+     "--end", "now", "--start", "end-1780m", "--step", "120",
+     "--width", "890",
      "--font", "DEFAULT:10:",
      "--font", "AXIS:8:",
      "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
@@ -195,21 +206,44 @@ def create_graphs():
      "--vertical-label", "Celsius",
      "--right-axis-label", "Fahrenheit",
      "--right-axis", "1.8:32",
-     "--width", "880", "--height", "340",
+     "--height", "380",
      "DEF:outdoor=temperatures.rrd:outdoor:LAST",
      "DEF:indoor=temperatures.rrd:indoor:LAST",
-     "DEF:tank=temperatures.rrd:tank:LAST",
+     "DEF:outdoor_dew=temperatures.rrd:outdoor_dew:LAST",
+     "DEF:indoor_dew=temperatures.rrd:indoor_dew:LAST",
+     "CDEF:outdoor-f=outdoor,1.8,*,32,+",
+     "CDEF:indoor-f=indoor,1.8,*,32,+",
+     "CDEF:outdoor_dew-f=outdoor_dew,1.8,*,32,+",
+     "CDEF:indoor_dew-f=indoor_dew,1.8,*,32,+",
+     "VDEF:outdoorMax=outdoor,MAXIMUM",
+     #"CDEF:outdoorMax-f=outdoorMax,1.8,*,32,+",
+     "VDEF:outdoorMin=outdoor,MINIMUM",
+     #"CDEF:outdoorMin-f=outdoorMin,1.8,*,32,+",
+     "VDEF:indoorMax=indoor,MAXIMUM",
+     #"CDEF:indoorMax-f=indoorMax,1.8,*,32,+",
+     "VDEF:indoorMin=indoor,MINIMUM",
+     #"CDEF:indoorMin-f=indoorMin,1.8,*,32,+",
      "LINE1:outdoor#ff0000:Outdoor",
-     "GPRINT:outdoor:LAST:%2.1lf °C",
-     "CDEF:outdoor-f=outdoor,1.8,*,32,+", "GPRINT:outdoor-f:LAST:%2.1lf °F",
+     "GPRINT:outdoor:LAST:%.1lf °C",
+     "GPRINT:outdoor-f:LAST:%.1lf °F",
+     "GPRINT:outdoorMax:Max\: %.1lf °C",
+     #"GPRINT:outdoorMax-f:%.1lf °F",
+     "GPRINT:outdoorMin:Min\: %.1lf °C",
+     #"GPRINT:outdoorMin-f:%.1lf °F",
+     "COMMENT:\l",
+     "LINE1:outdoor_dew#ff00ff:Outdoor Dewpoint",
+     "GPRINT:outdoor_dew:LAST:%.1lf °C",
+     "GPRINT:outdoor_dew-f:LAST:%.1lf °F",
      "COMMENT:\l",
      "LINE1:indoor#0000ff:Indoor",
-     "GPRINT:indoor:LAST: %2.1lf °C",
-     "CDEF:indoor-f=indoor,1.8,*,32,+", "GPRINT:indoor-f:LAST:%2.1lf °F",
+     "GPRINT:indoor:LAST: %.1lf °C",
+     "GPRINT:indoor-f:LAST:%.1lf °F",
+     "GPRINT:indoorMax:Max\:%.1lf °C",
+     "GPRINT:indoorMin:Min\:%.1lf °C",
      "COMMENT:\l",
-     "LINE1:tank#00ff00:Tank",
-     "GPRINT:tank:LAST:   %2.1lf °C",
-     "CDEF:tank-f=tank,1.8,*,32,+", "GPRINT:tank-f:LAST:%2.1lf °F",
+     "LINE1:indoor_dew#00ffff:Indoor Dewpoint",
+     "GPRINT:indoor_dew:LAST:%.1lf °C",
+     "GPRINT:indoor_dew-f:LAST:%.1lf °F",
      "COMMENT:\l",
      ] + common_args, capture_output=True, text=True)
     logging.info(f'return code: {result.returncode}')
@@ -224,7 +258,7 @@ def create_graphs():
      "--vertical-label", "Relative (%)",
      "--right-axis-label", "Relative (%)",
      "--right-axis", "1:0",
-     "--width", "880", "--height", "300",
+     "--height", "300",
      "DEF:outdoor=humidities.rrd:outdoor:LAST",
      "DEF:indoor=humidities.rrd:indoor:LAST",
      "LINE1:outdoor#ff0000:Outdoor",
@@ -246,7 +280,7 @@ def create_graphs():
       "--vertical-label", "hPa",
       "--right-axis-label", "hPa",
       "--right-axis", "1:0", "--right-axis-format", "%4.0lf",
-      "--width", "880", "--height", "300",
+      "--height", "300",
       "--lower-limit", "1002", "--upper-limit", "1030",
       "--y-grid", "1:2",
       "--units-exponent", "0",
@@ -267,7 +301,7 @@ def create_graphs():
      "--vertical-label", "Ω",
      "--right-axis-label", "Ω",
      "--right-axis", "1:0",
-     "--width", "880", "--height", "300",
+     "--height", "300",
      "DEF:indoor=gas.rrd:indoor:LAST",
      "VDEF:indoorMax=indoor,MAXIMUM",
      "VDEF:indoorMin=indoor,MINIMUM",
@@ -289,7 +323,7 @@ def create_graphs():
       "--vertical-label", "Celsius",
       "--right-axis-label", "Fahrenheit",
       "--right-axis", "1.8:32",
-      "--width", "880", "--height", "120",
+      "--height", "120",
       "DEF:pi=temperatures.rrd:pi:LAST",
       "DEF:picow=temperatures.rrd:picow:LAST",
       "LINE1:picow#ff0000:Pico W MCU",
@@ -313,11 +347,11 @@ while True:
     started = datetime.now() # Start timing the operation
 
     logging.info("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~") # Start logging cycle with a row of tildes to differentiate
-    outdoor_c, outdoor_hum, picow_temp_c = get_outdoor()
-    indoor_c, indoor_hum, indoor_press, indoor_gas = get_indoor()
-    tank_c = 'U' # Tank sensor is broken so set to NaN
+    outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c = get_outdoor()
+    indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
+    #tank_c = 'U' # Tank sensor is broken so set to NaN
     pi_temp_c, pi_temp_f = pi_temp()
-    update_rrd(outdoor_c, outdoor_hum, picow_temp_c, indoor_c, indoor_hum, indoor_press, indoor_gas, tank_c, pi_temp_c)
+    update_rrd(outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c, indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas, pi_temp_c)
     create_graphs()
 
     ended = datetime.now() # Stop timing the operation
