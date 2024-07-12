@@ -162,3 +162,4 @@ I realize this is turning more into a glorified weather station app, but that's 
 - ~~Add High/Low stats~~
 - ~~Log rotation using logging.handlers.RotatingFileHandler~~
 - ~~Break out graphing args to variables, squash common args to reusable variable~~
+- Switch to built in Python module
