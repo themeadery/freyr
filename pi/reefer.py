@@ -139,51 +139,20 @@ def pi_temp():
     return temp_c, temp_f
 
 # Update RRD databases function
-def update_rrd(outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c, indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas, pi_temp_c):
-    #logging.info("")
-    logging.info("Updating RRD databases...")
+def update_rrd(rrd_filename, values_string):
+    """Updates an RRD database with specified values.
 
+    Args:
+        rrd_filename (str): The name of the RRD database file.
+        values_string (str): The string containing values in the format "N:value1:value2:...".
+    """
+
+    logging.info(f"Updating {rrd_filename}...")
     try:
-        logging.info("Updating temperatures.rrd...")
-        result = rrdtool.updatev("temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
-    except rrdtool.ProgrammingError as errp:
-            logging.error(errp)
-    except rrdtool.OperationalError as erro:
-            logging.error(erro)
-    else:
+        result = rrdtool.updatev(rrd_filename, values_string)
         logging.info(f"Success! Result: {result}")
-
-    try:
-        logging.info("Updating humidities.rrd...")
-        result = rrdtool.updatev("humidities.rrd", f"N:{outdoor_hum}:{indoor_hum}")
-    except rrdtool.ProgrammingError as errp:
-            logging.error(errp)
-    except rrdtool.OperationalError as erro:
-            logging.error(erro)
-    else:
-        logging.info(f"Success! Result: {result}")
-
-    try:
-        logging.info("Updating pressures.rrd...")
-        result = rrdtool.updatev("pressures.rrd", f"N:{indoor_press}")
-    except rrdtool.ProgrammingError as errp:
-            logging.error(errp)
-    except rrdtool.OperationalError as erro:
-            logging.error(erro)
-    else:
-        logging.info(f"Success! Result: {result}")
-
-    try:
-        logging.info("Updating gas.rrd...")
-        result = rrdtool.updatev("gas.rrd", f"N:{indoor_gas}")
-    except rrdtool.ProgrammingError as errp:
-            logging.error(errp)
-    except rrdtool.OperationalError as erro:
-            logging.error(erro)
-    else:
-        logging.info(f"Success! Result: {result}")
-
-    logging.info("Done updating databases")
+    except (rrdtool.ProgrammingError, rrdtool.OperationalError) as err:
+        logging.error(f"Error updating {rrd_filename}.rrd: {err}")
 
 # RRDtool graphing function
 def create_graphs():
@@ -369,10 +338,18 @@ while True:
     indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
     #tank_c = 'U' # Tank sensor is broken so set to NaN
     pi_temp_c, pi_temp_f = pi_temp()
-    update_rrd(outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c, indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas, pi_temp_c)
+    #update_rrd(outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c, indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas, pi_temp_c)
+    logging.info("Updating RRD databases...")
+    update_rrd("temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
+    update_rrd("humidities.rrd", f"N:{outdoor_hum}:{indoor_hum}")
+    update_rrd("pressures.rrd", f"N:{indoor_press}")
+    update_rrd("gas.rrd", f"N:{indoor_gas}")
+    logging.info("Done updating databases")
     create_graphs()
 
     ended = datetime.now() # Stop timing the operation
+    loop_time = (ended - started).seconds
+    logging.info(f"Loop took {loop_time} seconds")
     # Compute the amount of time it took to run the loop above
     # then sleep for the remaining time left
     # if it is less than the configured loop interval
