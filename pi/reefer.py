@@ -3,6 +3,7 @@ from datetime import datetime
 from datetime import timedelta
 import bme680
 import requests
+import rrdtool
 import subprocess
 import vcgencmd
 import math
@@ -71,8 +72,8 @@ def calc_dewpoint(humidity, temp_c):
 
 # Outdoor Pi Pico W + Si7021 sensor function
 def get_outdoor():
-    logging.info("")
-    logging.info("Outdoor\n")
+    logging.info("Outdoor sensor data:")
+    #logging.info("")
     try:
         # Initialize variables so if request fails graphs still populate with NaN
         outdoor_c = outdoor_hum = outdoor_dew = picow_temp_c ='U'
@@ -103,8 +104,9 @@ def get_outdoor():
 
 # Indoor BME680 function
 def get_indoor():
-    logging.info("")
-    logging.info("Indoor\n")
+    #logging.info("")
+    logging.info("Indoor sensor data:")
+    #logging.info("")
     if sensor.get_sensor_data():
         temp_c = sensor.data.temperature - 0.5 # Insert sensor error correction here if needed
         temp_f = c_to_f(temp_c)
@@ -138,42 +140,50 @@ def pi_temp():
 
 # Update RRD databases function
 def update_rrd(outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c, indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas, pi_temp_c):
-    logging.info("")
-    logging.info("Updating RRD databases...\n")
+    #logging.info("")
+    logging.info("Updating RRD databases...")
 
-    result = subprocess.run(["rrdtool", "updatev", "temperatures.rrd",
-     f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}"
-     ], capture_output=True, text=True)
-    logging.info(f'return code: {result.returncode}')
-    logging.info(f'{result.stdout}')
-    if result.stderr:
-        logging.error(f'errors: {result.stderr}')
+    try:
+        logging.info("Updating temperatures.rrd...")
+        result = rrdtool.updatev("temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
+    except rrdtool.ProgrammingError as errp:
+            logging.error(errp)
+    except rrdtool.OperationalError as erro:
+            logging.error(erro)
+    else:
+        logging.info(f"Success! Result: {result}")
 
-    result = subprocess.run(["rrdtool", "updatev", "humidities.rrd",
-     f"N:{outdoor_hum}:{indoor_hum}"
-     ], capture_output=True, text=True)
-    logging.info(f'return code: {result.returncode}')
-    logging.info(f'{result.stdout}')
-    if result.stderr:
-        logging.error(f'errors: {result.stderr}')
+    try:
+        logging.info("Updating humidities.rrd...")
+        result = rrdtool.updatev("humidities.rrd", f"N:{outdoor_hum}:{indoor_hum}")
+    except rrdtool.ProgrammingError as errp:
+            logging.error(errp)
+    except rrdtool.OperationalError as erro:
+            logging.error(erro)
+    else:
+        logging.info(f"Success! Result: {result}")
 
-    result = subprocess.run(["rrdtool", "updatev", "pressures.rrd",
-     f"N:{indoor_press}"
-     ], capture_output=True, text=True)
-    logging.info(f'return code: {result.returncode}')
-    logging.info(f'{result.stdout}')
-    if result.stderr:
-        logging.error(f'errors: {result.stderr}')
+    try:
+        logging.info("Updating pressures.rrd...")
+        result = rrdtool.updatev("pressures.rrd", f"N:{indoor_press}")
+    except rrdtool.ProgrammingError as errp:
+            logging.error(errp)
+    except rrdtool.OperationalError as erro:
+            logging.error(erro)
+    else:
+        logging.info(f"Success! Result: {result}")
 
-    result = subprocess.run(["rrdtool", "updatev", "gas.rrd",
-     f"N:{indoor_gas}"
-     ], capture_output=True, text=True)
-    logging.info(f'return code: {result.returncode}')
-    logging.info(f'{result.stdout}')
-    if result.stderr:
-        logging.error(f'errors: {result.stderr}')
+    try:
+        logging.info("Updating gas.rrd...")
+        result = rrdtool.updatev("gas.rrd", f"N:{indoor_gas}")
+    except rrdtool.ProgrammingError as errp:
+            logging.error(errp)
+    except rrdtool.OperationalError as erro:
+            logging.error(erro)
+    else:
+        logging.info(f"Success! Result: {result}")
 
-    logging.info("Done")
+    logging.info("Done updating databases")
 
 # RRDtool graphing function
 def create_graphs():
@@ -348,7 +358,7 @@ def create_graphs():
     if result.stderr:
         logging.error(f'errors: {result.stderr}')
 
-    logging.info("Done")
+    logging.info("Done creating graphs")
 
 # Main Loop
 while True:
