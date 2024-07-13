@@ -73,7 +73,6 @@ def calc_dewpoint(humidity, temp_c):
 # Outdoor Pi Pico W + Si7021 sensor function
 def get_outdoor():
     logging.info("Outdoor sensor data:")
-    #logging.info("")
     try:
         # Initialize variables so if request fails graphs still populate with NaN
         outdoor_c = outdoor_hum = outdoor_dew = picow_temp_c ='U'
@@ -104,9 +103,7 @@ def get_outdoor():
 
 # Indoor BME680 function
 def get_indoor():
-    #logging.info("")
     logging.info("Indoor sensor data:")
-    #logging.info("")
     if sensor.get_sensor_data():
         temp_c = sensor.data.temperature - 0.5 # Insert sensor error correction here if needed
         temp_f = c_to_f(temp_c)
@@ -140,19 +137,14 @@ def pi_temp():
 
 # Update RRD databases function
 def update_rrd(rrd_filename, values_string):
-    """Updates an RRD database with specified values.
-
-    Args:
-        rrd_filename (str): The name of the RRD database file.
-        values_string (str): The string containing values in the format "N:value1:value2:...".
-    """
-
     logging.info(f"Updating {rrd_filename}...")
     try:
         result = rrdtool.updatev(rrd_filename, values_string)
-        logging.info(f"Success! Result: {result}")
     except (rrdtool.ProgrammingError, rrdtool.OperationalError) as err:
-        logging.error(f"Error updating {rrd_filename}.rrd: {err}")
+        logging.error(f"Error updating {rrd_filename}: {err}")
+        logging.error(f"Fail! Result: {result}")
+    else:
+        logging.info(f"Success! Result: {result}")
 
 # RRDtool graphing function
 def create_graphs():
