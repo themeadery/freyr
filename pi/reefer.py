@@ -4,7 +4,7 @@ from datetime import timedelta
 import bme680
 import requests
 import rrdtool
-import subprocess
+#import subprocess
 import vcgencmd
 import math
 import logging
@@ -152,25 +152,100 @@ def create_graphs():
 
     # Reduce duplicate lines of code
     common_args = [
-     "--end", "now", "--start", "end-1780m", "--step", "120",
-     "--width", "890",
-     "--font", "DEFAULT:10:",
-     "--font", "AXIS:8:",
-     "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
-     "--alt-autoscale",
-     "--border", "0",
-     "--slope-mode",
-     "-c", "BACK#333333",
-     "-c", "CANVAS#18191A",
-     "-c", "FONT#DDDDDD",
-     "-c", "GRID#DDDDDD1A",
-     "-c", "MGRID#DDDDDD33",
-     "-c", "FRAME#18191A",
-     "-c", "ARROW#333333",
-     "--disable-rrdtool-tag"
+        "--end", "now", "--start", "end-1780m", "--step", "120",
+        "--width", "890",
+        "--font", "DEFAULT:10:",
+        "--font", "AXIS:8:",
+        "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
+        "--alt-autoscale",
+        "--border", "0",
+        "--slope-mode",
+        "-c", "BACK#333333",
+        "-c", "CANVAS#18191A",
+        "-c", "FONT#DDDDDD",
+        "-c", "GRID#DDDDDD1A",
+        "-c", "MGRID#DDDDDD33",
+        "-c", "FRAME#18191A",
+        "-c", "ARROW#333333",
+        "--disable-rrdtool-tag"
     ]
 
-    result = subprocess.run([
+    try:
+        result = rrdtool.graph("/mnt/tmp/temperatures.png",
+            common_args,
+            "--title", "Temperature",
+            "--vertical-label", "Celsius",
+            "--right-axis-label", "Fahrenheit",
+            "--right-axis", "1.8:32",
+            "--height", "380",
+            "DEF:outdoor=temperatures.rrd:outdoor:LAST",
+            "DEF:indoor=temperatures.rrd:indoor:LAST",
+            "DEF:outdoor_dew=temperatures.rrd:outdoor_dew:LAST",
+            "DEF:indoor_dew=temperatures.rrd:indoor_dew:LAST",
+            "DEF:outdoorMax=temperatures.rrd:outdoor:MAX",
+            "DEF:indoorMax=temperatures.rrd:indoor:MAX",
+            "DEF:outdoor_dewMax=temperatures.rrd:outdoor_dew:MAX",
+            "DEF:indoor_dewMax=temperatures.rrd:indoor_dew:MAX",
+            "DEF:outdoorMin=temperatures.rrd:outdoor:MIN",
+            "DEF:indoorMin=temperatures.rrd:indoor:MIN",
+            "DEF:outdoor_dewMin=temperatures.rrd:outdoor_dew:MIN",
+            "DEF:indoor_dewMin=temperatures.rrd:indoor_dew:MIN",
+            "CDEF:outdoor-f=outdoor,1.8,*,32,+",
+            "CDEF:indoor-f=indoor,1.8,*,32,+",
+            "CDEF:outdoor_dew-f=outdoor_dew,1.8,*,32,+",
+            "CDEF:indoor_dew-f=indoor_dew,1.8,*,32,+",
+            "CDEF:outdoorMax-f=outdoorMax,1.8,*,32,+",
+            "CDEF:indoorMax-f=indoorMax,1.8,*,32,+",
+            "CDEF:outdoor_dewMax-f=outdoor_dewMax,1.8,*,32,+",
+            "CDEF:indoor_dewMax-f=indoor_dewMax,1.8,*,32,+",
+            "CDEF:outdoorMin-f=outdoorMin,1.8,*,32,+",
+            "CDEF:indoorMin-f=indoorMin,1.8,*,32,+",
+            "CDEF:outdoor_dewMin-f=outdoor_dewMin,1.8,*,32,+",
+            "CDEF:indoor_dewMin-f=indoor_dewMin,1.8,*,32,+",
+            #"VDEF:outdoorMax=outdoor,MAXIMUM",
+            #"VDEF:outdoorMin=outdoor,MINIMUM",
+            #"VDEF:indoorMax=indoor,MAXIMUM",
+            #"VDEF:indoorMin=indoor,MINIMUM",
+            #"VDEF:outdoor_dewMax=outdoor_dew,MAXIMUM",
+            #"VDEF:outdoor_dewMin=outdoor_dew,MINIMUM",
+            #"VDEF:indoor_dewMax=indoor_dew,MAXIMUM",
+            #"VDEF:indoor_dewMin=indoor_dew,MINIMUM",
+            "LINE1:outdoor#ff0000:Outdoor         ",
+            "GPRINT:outdoor:LAST:Cur\: %4.1lf °C",
+            "GPRINT:outdoor-f:LAST: %5.1lf °F",
+            "GPRINT:outdoorMax:MAX:Max\: %4.1lf °C",
+            "GPRINT:outdoorMax-f:MAX: %5.1lf °F",
+            "GPRINT:outdoorMin:MIN:Min\: %4.1lf °C",
+            "GPRINT:outdoorMin-f:MIN: %5.1lf °F\l",
+            "LINE1:outdoor_dew#ff00ff:Outdoor Dewpoint",
+            "GPRINT:outdoor_dew:LAST:Cur\: %4.1lf °C",
+            "GPRINT:outdoor_dew-f:LAST: %5.1lf °F",
+            "GPRINT:outdoor_dewMax:MAX:Max\: %4.1lf °C",
+            "GPRINT:outdoor_dewMax-f:MAX: %5.1lf °F",
+            "GPRINT:outdoor_dewMin:MIN:Min\: %4.1lf °C",
+            "GPRINT:outdoor_dewMin-f:MIN: %5.1lf °F\l",
+            "LINE1:indoor#0000ff:Indoor          ",
+            "GPRINT:indoor:LAST:Cur\: %4.1lf °C",
+            "GPRINT:indoor-f:LAST: %5.1lf °F",
+            "GPRINT:indoorMax:MAX:Max\: %4.1lf °C",
+            "GPRINT:indoorMax-f:MAX: %5.1lf °F",
+            "GPRINT:indoorMin:MIN:Min\: %4.1lf °C",
+            "GPRINT:indoorMin-f:MIN: %5.1lf °F\l",
+            "LINE1:indoor_dew#00ffff:Indoor Dewpoint ",
+            "GPRINT:indoor_dew:LAST:Cur\: %4.1lf °C",
+            "GPRINT:indoor_dew-f:LAST: %5.1lf °F",
+            "GPRINT:indoor_dewMax:MAX:Max\: %4.1lf °C",
+            "GPRINT:indoor_dewMax-f:MAX: %5.1lf °F",
+            "GPRINT:indoor_dewMin:MIN:Min\: %4.1lf °C",
+            "GPRINT:indoor_dewMin-f:MIN: %5.1lf °F\l"
+        )
+    except (rrdtool.ProgrammingError, rrdtool.OperationalError) as err:
+        logging.error(f"Error creating graph: {err}")
+        logging.error(f"Fail! Result: {result}")
+    else:
+        logging.info(f"Success! Width: {result[0]} Height: {result[1]} Extra Info: {result[2]}")
+
+    """result = subprocess.run([
      "rrdtool", "graph",
      "/mnt/tmp/temperatures.png",
      "--title", "Temperature",
@@ -242,9 +317,38 @@ def create_graphs():
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
     if result.stderr:
-        logging.error(f'errors: {result.stderr}')
+        logging.error(f'errors: {result.stderr}')"""
 
-    result = subprocess.run([
+    try:
+        result = rrdtool.graph("/mnt/tmp/humidities.png",
+            common_args,
+            "--title", "Humidity",
+            "--vertical-label", "Relative (%)",
+            "--right-axis-label", "Relative (%)",
+            "--right-axis", "1:0",
+            "--height", "300",
+            "DEF:outdoor=humidities.rrd:outdoor:LAST",
+            "DEF:indoor=humidities.rrd:indoor:LAST",
+            "VDEF:outdoorMax=outdoor,MAXIMUM",
+            "VDEF:outdoorMin=outdoor,MINIMUM",
+            "VDEF:indoorMax=indoor,MAXIMUM",
+            "VDEF:indoorMin=indoor,MINIMUM",
+            "LINE1:outdoor#ff0000:Outdoor",
+            "GPRINT:outdoor:LAST:Cur\: %.1lf%%",
+            "GPRINT:outdoorMax:Max\: %.1lf%%",
+            "GPRINT:outdoorMin:Min\: %.1lf%%\l",
+            "LINE1:indoor#0000ff:Indoor ",
+            "GPRINT:indoor:LAST:Cur\: %.1lf%%",
+            "GPRINT:indoorMax:Max\: %.1lf%%",
+            "GPRINT:indoorMin:Min\: %.1lf%%\l"
+        )
+    except (rrdtool.ProgrammingError, rrdtool.OperationalError) as err:
+        logging.error(f"Error creating graph: {err}")
+        logging.error(f"Fail! Result: {result}")
+    else:
+        logging.info(f"Success! Width: {result[0]} Height: {result[1]} Extra Info: {result[2]}")
+
+    """result = subprocess.run([
      "rrdtool", "graph",
      "/mnt/tmp/humidities.png",
      "--title", "Humidity",
@@ -272,9 +376,34 @@ def create_graphs():
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
     if result.stderr:
-        logging.error(f'errors: {result.stderr}')
+        logging.error(f'errors: {result.stderr}')"""
 
-    result = subprocess.run([
+    try:
+        result = rrdtool.graph("/mnt/tmp/pressures.png",
+            common_args,
+            "--title", "Barometric Pressure (MSL)",
+            "--vertical-label", "hPa",
+            "--right-axis-label", "hPa",
+            "--right-axis", "1:0", "--right-axis-format", "%4.0lf",
+            "--height", "300",
+            "--lower-limit", "1002", "--upper-limit", "1030",
+            "--y-grid", "1:2",
+            "--units-exponent", "0",
+            "DEF:indoor=pressures.rrd:indoor:LAST",
+            "VDEF:indoorMax=indoor,MAXIMUM",
+            "VDEF:indoorMin=indoor,MINIMUM",
+            "LINE1:indoor#00ff00:Local",
+            "GPRINT:indoor:LAST:Cur\: %.2lf hPa",
+            "GPRINT:indoorMax:Max\: %.2lf hPa",
+            "GPRINT:indoorMin:Min\: %.2lf hPa\l"
+        )
+    except (rrdtool.ProgrammingError, rrdtool.OperationalError) as err:
+        logging.error(f"Error creating graph: {err}")
+        logging.error(f"Fail! Result: {result}")
+    else:
+        logging.info(f"Success! Width: {result[0]} Height: {result[1]} Extra Info: {result[2]}")
+
+    """result = subprocess.run([
      "rrdtool", "graph",
      "/mnt/tmp/pressures.png",
      "--title", "Barometric Pressure (MSL)",
@@ -296,9 +425,31 @@ def create_graphs():
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
     if result.stderr:
-        logging.error(f'errors: {result.stderr}')
+        logging.error(f'errors: {result.stderr}')"""
 
-    result = subprocess.run([
+    try:
+        result = rrdtool.graph("/mnt/tmp/gas.png",
+            common_args,
+            "--title", "Gas Resistance",
+            "--vertical-label", "Ω",
+            "--right-axis-label", "Ω",
+            "--right-axis", "1:0",
+            "--height", "300",
+            "DEF:indoor=gas.rrd:indoor:LAST",
+            "VDEF:indoorMax=indoor,MAXIMUM",
+            "VDEF:indoorMin=indoor,MINIMUM",
+            "LINE1:indoor#0000ff:Indoor",
+            "GPRINT:indoor:LAST:Cur\: %.1lf%s Ω",
+            "GPRINT:indoorMax:Max\: %.1lf%s Ω",
+            "GPRINT:indoorMin:Min\: %.1lf%s Ω\l"
+        )
+    except (rrdtool.ProgrammingError, rrdtool.OperationalError) as err:
+        logging.error(f"Error creating graph: {err}")
+        logging.error(f"Fail! Result: {result}")
+    else:
+        logging.info(f"Success! Width: {result[0]} Height: {result[1]} Extra Info: {result[2]}")
+
+    """result = subprocess.run([
      "rrdtool", "graph",
      "/mnt/tmp/gas.png",
      "--title", "Gas Resistance",
@@ -317,9 +468,50 @@ def create_graphs():
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
     if result.stderr:
-        logging.error(f'errors: {result.stderr}')
+        logging.error(f'errors: {result.stderr}')"""
 
-    result = subprocess.run([
+    try:
+        result = rrdtool.graph("/mnt/tmp/pi.png",
+            common_args,
+            "--title", "Pi Temperatures",
+            "--vertical-label", "Celsius",
+            "--right-axis-label", "Fahrenheit",
+            "--right-axis", "1.8:32",
+            "--height", "150",
+            "DEF:pi=temperatures.rrd:pi:LAST",
+            "DEF:picow=temperatures.rrd:picow:LAST",
+            "DEF:piMax=temperatures.rrd:pi:MAX",
+            "DEF:picowMax=temperatures.rrd:picow:MAX",
+            "DEF:piMin=temperatures.rrd:pi:MIN",
+            "DEF:picowMin=temperatures.rrd:picow:MIN",
+            "CDEF:pi-f=pi,1.8,*,32,+",
+            "CDEF:picow-f=picow,1.8,*,32,+",
+            "CDEF:piMax-f=piMax,1.8,*,32,+",
+            "CDEF:piMin-f=piMin,1.8,*,32,+",
+            "CDEF:picowMax-f=picowMax,1.8,*,32,+",
+            "CDEF:picowMin-f=picowMin,1.8,*,32,+",
+            "LINE1:picow#ff0000:Pico W MCU",
+            "GPRINT:picow:LAST:Cur\: %4.1lf °C",
+            "GPRINT:picow-f:LAST: %5.1lf °F",
+            "GPRINT:picowMax:MAX:Max\: %4.1lf °C",
+            "GPRINT:picowMax-f:MAX: %5.1lf °F",
+            "GPRINT:picowMin:MIN:Min\: %4.1lf °C",
+            "GPRINT:picowMin-f:MIN: %5.1lf °F\l",
+            "LINE1:pi#0000ff:Zero W CPU",
+            "GPRINT:pi:LAST:Cur\: %4.1lf °C",
+            "GPRINT:pi-f:LAST: %5.1lf °F",
+            "GPRINT:piMax:MAX:Max\: %4.1lf °C",
+            "GPRINT:piMax-f:MAX: %5.1lf °F",
+            "GPRINT:piMin:MIN:Min\: %4.1lf °C",
+            "GPRINT:piMin-f:MIN: %5.1lf °F\l"
+        )
+    except (rrdtool.ProgrammingError, rrdtool.OperationalError) as err:
+        logging.error(f"Error creating graph: {err}")
+        logging.error(f"Fail! Result: {result}")
+    else:
+        logging.info(f"Success! Width: {result[0]} Height: {result[1]} Extra Info: {result[2]}")
+
+    """result = subprocess.run([
      "rrdtool", "graph",
      "/mnt/tmp/pi.png",
      "--title", "Pi Temperatures",
@@ -357,7 +549,7 @@ def create_graphs():
     logging.info(f'return code: {result.returncode}')
     logging.info(f'{result.stdout}')
     if result.stderr:
-        logging.error(f'errors: {result.stderr}')
+        logging.error(f'errors: {result.stderr}')"""
 
     logging.info("Done creating graphs")
 

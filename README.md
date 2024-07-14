@@ -51,7 +51,7 @@ According to my testing, Google searches, and the DS18B20 datasheet 3v3 is not e
 
 You can satisfy pretty much all dependencies with these commands on a fresh Pi:
 ```bash
-$ sudo apt install git nginx rrdtool python3-pip
+$ sudo apt install git nginx rrdtool python3-rrdtool python3-pip
 $ sudo pip install adafruit-circuitpython-si7021
 $ sudo pip install git+https://github.com/nicmcd/vcgencmd.git
 ```
@@ -69,7 +69,7 @@ $ rrdtool create pressures.rrd --step 60 DS:indoor:GAUGE:120:800:1100 RRA:LAST:0
 $ rrdtool create gas.rrd --step 60 DS:indoor:GAUGE:120:50:200000 RRA:LAST:0.5:1:2880
 ```
 
-This will create databases with a 60 second interval, 120 second heartbeat timeout, between -20 and 55 degrees Celsius for the outdoor sensor, between 0 and 55 degrees Celsius for the indoor sensors, between -80 and 55 degrees Celsius dewpoints, 0-100 degrees Celsius for the pi CPU sensor, 0-100% relative humidity, 800-1100 hPa pressure, and 50-200,000 ohms gas resistance with 24 hours of data before rolling over.
+This will create databases with a 60 second interval, 120 second heartbeat timeout, between -20 and 55 degrees Celsius for the outdoor sensor, between 0 and 55 degrees Celsius for the indoor sensors, between -80 and 55 degrees Celsius dewpoints, 0-100 degrees Celsius for the pi CPU sensor, 0-100% relative humidity, 800-1100 hPa pressure, and 50-200,000 ohms gas resistance with 48 hours of data before rolling over.
 
 More information here: https://michael.bouvy.net/post/graph-data-rrdtool-sensors-arduino
 
@@ -162,5 +162,6 @@ I realize this is turning more into a glorified weather station app, but that's 
 - ~~Add High/Low stats~~
 - ~~Log rotation using logging.handlers.RotatingFileHandler~~
 - ~~Break out graphing args to variables, squash common args to reusable variable~~
-- Switch to built in Python module
+- ~~Switch to built in Python module~~
 - Break secrets out to external file (lat, lon, API key, etc)
+- Fix readings from barometer and gas resistance sensor on first loop iteration, time.sleep on BME680 initilization?
