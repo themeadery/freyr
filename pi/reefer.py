@@ -1,6 +1,7 @@
 import time
 from datetime import datetime
 from datetime import timedelta
+import secrets
 import bme680
 import requests
 import rrdtool
@@ -17,18 +18,18 @@ interval = timedelta(seconds=interval) # Convert integer into proper time format
 # Set up logging
 logging.basicConfig(
     handlers=[RotatingFileHandler('reefer.log', maxBytes=4000000, backupCount=3)],
-    level=logging.WARNING, # Set logging level
+    level=logging.INFO, # Set logging level. logging.WARNING = less info
     format='%(asctime)s - %(levelname)s - %(message)s')
 
 # API query definitions
-#queryOWN = {'lat':'put your lat here', 'lon':'put your lon here', 'appid':'put your API key here'} # OpenWeatherMap API
+#queryOWN = {'lat':secrets.LAT, 'lon':secrets.LON, 'appid':secrets.APPID} # OpenWeatherMap API
 
 # Initialize HTTP(S) request sessions for reuse during API calls
 #sessionOWN = requests.Session() # OpenWeatherMap API
 sessionSatellite = requests.Session() # Pi Pico W + si7021 sensor API
 
 # Station altitude in meters
-sta_alt = 280.0
+sta_alt = secrets.STA_ALT
 
 # Initialize BME680
 try:
@@ -36,22 +37,22 @@ try:
 except (RuntimeError, IOError):
     sensor = bme680.BME680(bme680.I2C_ADDR_SECONDARY)
 # These oversampling settings can be tweaked to
-# change the balance between accuracy and noise in
-# the data.
+# change the balance between accuracy and noise in the data.
 sensor.set_humidity_oversample(bme680.OS_2X)
 sensor.set_pressure_oversample(bme680.OS_4X)
 sensor.set_temperature_oversample(bme680.OS_8X)
 sensor.set_filter(bme680.FILTER_SIZE_3)
-sensor.set_gas_status(bme680.ENABLE_GAS_MEAS) # turn on heater for gas measurements
+sensor.set_gas_status(bme680.ENABLE_GAS_MEAS)
+# time.sleep here to fix first loop iteration and "Initial reading:" false readings?
 logging.info('Initial reading:')
-for name in dir(sensor.data):
+for name in dir(sensor.data): # This is a bit pointless as sensor.get_sensor_data() has not been called, yet and so it's not ready, old values, heater not turned on, etc
     value = getattr(sensor.data, name)
-
     if not name.startswith('_'):
-        logging.info('{}: {}'.format(name, value))
+        logging.info('{}: {}'.format(name, value)) # heat_stable is never True, need delay? A: no, heater isn't configured until below
 sensor.set_gas_heater_temperature(320) # 320 °C
 sensor.set_gas_heater_duration(150) # 150 ms
 sensor.select_gas_heater_profile(0) # Profile 1 of 10
+# time.sleep here to fix first loop iteration false readings?
 
 # Global Celsius to Fahrenheit conversion function
 def c_to_f(temp_c):
@@ -104,7 +105,7 @@ def get_outdoor():
 # Indoor BME680 function
 def get_indoor():
     logging.info("Indoor sensor data:")
-    if sensor.get_sensor_data():
+    if sensor.get_sensor_data(): # Change to: "if sensor.get_sensor_data() and sensor.data.heat_stable:" else: set all vars to 'U' and wait until next loop?
         temp_c = sensor.data.temperature - 0.5 # Insert sensor error correction here if needed
         temp_f = c_to_f(temp_c)
         logging.info(f"Temperature: {temp_c} °C | {temp_f} °F")
@@ -112,7 +113,7 @@ def get_indoor():
         logging.info(f"Humidity: {hum}%")
         dew = calc_dewpoint(hum, temp_c)
         logging.info(f"Dewpoint: {dew} °C")
-        sta_press = sensor.data.pressure
+        sta_press = sensor.data.pressure # This data is incorrect (low) if sensor is not heat_stable or only on first iteration
         logging.info(f"Raw Pressure: {sta_press} hPa raw station pressure")
         press = sta_press_to_mslp(sta_press, temp_c) # convert to MSLP
         logging.info(f"Pressure: {press} hPa MSLP") # converted to MSLP
@@ -121,11 +122,11 @@ def get_indoor():
             logging.info(f"Gas Resistance: {gas} Ω")
         else:
             gas = 'U'
-            logging.warning("No data from gas sensor")
+            logging.warning("Sensor is not heat_stable. No data from gas sensor")
         return temp_c, hum, dew, press, gas
     else:
         temp_c = hum = dew = press = gas = 'U' # Set all variables to NaN if sensor data fails
-        logging.error("No sensor data available")
+        logging.error("Sensor is not ready. No sensor data available")
         return temp_c, hum, dew, press, gas
 
 # Pi Zero W Temperature function
