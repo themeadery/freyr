@@ -5,7 +5,6 @@ import secrets
 import bme680
 import requests
 import rrdtool
-#import subprocess
 import vcgencmd
 import math
 import logging
@@ -43,12 +42,11 @@ sensor.set_pressure_oversample(bme680.OS_4X)
 sensor.set_temperature_oversample(bme680.OS_8X)
 sensor.set_filter(bme680.FILTER_SIZE_3)
 sensor.set_gas_status(bme680.ENABLE_GAS_MEAS)
-# time.sleep here to fix first loop iteration and "Initial reading:" false readings?
-logging.info('Initial reading:')
+"""logging.info('Initial reading:')
 for name in dir(sensor.data): # This is a bit pointless as sensor.get_sensor_data() has not been called, yet and so it's not ready, old values, heater not turned on, etc
     value = getattr(sensor.data, name)
     if not name.startswith('_'):
-        logging.info('{}: {}'.format(name, value)) # heat_stable is never True, need delay? A: no, heater isn't configured until below
+        logging.info('{}: {}'.format(name, value))""" # heat_stable is never True, need delay? A: no, heater isn't configured until below
 sensor.set_gas_heater_temperature(320) # 320 °C
 sensor.set_gas_heater_duration(150) # 150 ms
 sensor.select_gas_heater_profile(0) # Profile 1 of 10
@@ -146,6 +144,7 @@ def update_rrd(rrd_filename, values_string):
         logging.error(f"Fail! Result: {result}")
     else:
         logging.info(f"Success! Result: {result}")
+        logging.info(f"Updated {rrd_filename} with values {values_string}") #Show what went into the RRD
 
 # RRDtool graphing function
 def create_graphs():
