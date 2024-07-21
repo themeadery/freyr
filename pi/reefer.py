@@ -42,15 +42,21 @@ sensor.set_pressure_oversample(bme680.OS_4X)
 sensor.set_temperature_oversample(bme680.OS_8X)
 sensor.set_filter(bme680.FILTER_SIZE_3)
 sensor.set_gas_status(bme680.ENABLE_GAS_MEAS)
-"""logging.info('Initial reading:')
-for name in dir(sensor.data): # This is a bit pointless as sensor.get_sensor_data() has not been called, yet and so it's not ready, old values, heater not turned on, etc
-    value = getattr(sensor.data, name)
-    if not name.startswith('_'):
-        logging.info('{}: {}'.format(name, value))""" # heat_stable is never True, need delay? A: no, heater isn't configured until below
 sensor.set_gas_heater_temperature(320) # 320 °C
 sensor.set_gas_heater_duration(150) # 150 ms
 sensor.select_gas_heater_profile(0) # Profile 1 of 10
-# time.sleep here to fix first loop iteration false readings?
+
+# BME680 must be read twice in order to fire up the heater and become heat_stable
+# Otherwise the data is garbage on the first call from the main loop
+warmup_time = 5  # in sec
+for _ in range(2): # Loop iterates 2 times using a throwaway variable "_"
+    logging.info(f"Warming up BME680 sensor for {warmup_time} seconds...")
+    sensor.get_sensor_data() # call function from bme680 module, but don't return anything, this fires up heater
+    time.sleep(warmup_time)
+
+offset = -0.4 # Temperature offset in deg C. Slight compensation for heating from components on PCB, wires to sensor, etc.
+sensor.set_temp_offset(offset)
+# Done initializing BME680
 
 # Global Celsius to Fahrenheit conversion function
 def c_to_f(temp_c):
@@ -63,6 +69,7 @@ def sta_press_to_mslp(sta_press, temp_c):
     return mslp
 
 # Dewpoint calculation function
+# Formula source: https://gist.github.com/sourceperl/45587ea99ff123745428
 def calc_dewpoint(humidity, temp_c):
     a = 17.625
     b = 243.04
@@ -103,8 +110,8 @@ def get_outdoor():
 # Indoor BME680 function
 def get_indoor():
     logging.info("Indoor sensor data:")
-    if sensor.get_sensor_data(): # Change to: "if sensor.get_sensor_data() and sensor.data.heat_stable:" else: set all vars to 'U' and wait until next loop?
-        temp_c = sensor.data.temperature - 0.5 # Insert sensor error correction here if needed
+    if sensor.get_sensor_data() and sensor.data.heat_stable:
+        temp_c = sensor.data.temperature #- 0.5 # Insert sensor error correction here if needed. BAD IDEA, use internal function, changes all values below.
         temp_f = c_to_f(temp_c)
         logging.info(f"Temperature: {temp_c} °C | {temp_f} °F")
         hum = sensor.data.humidity
@@ -115,16 +122,20 @@ def get_indoor():
         logging.info(f"Raw Pressure: {sta_press} hPa raw station pressure")
         press = sta_press_to_mslp(sta_press, temp_c) # convert to MSLP
         logging.info(f"Pressure: {press} hPa MSLP") # converted to MSLP
-        if sensor.data.heat_stable:
+        gas = sensor.data.gas_resistance
+        logging.info(f"Gas Resistance: {gas} Ω")
+
+        """if sensor.data.heat_stable:
             gas = sensor.data.gas_resistance
             logging.info(f"Gas Resistance: {gas} Ω")
         else:
             gas = 'U'
-            logging.warning("Sensor is not heat_stable. No data from gas sensor")
+            logging.warning("Sensor is not heat_stable. No data from gas sensor")"""
+
         return temp_c, hum, dew, press, gas
     else:
         temp_c = hum = dew = press = gas = 'U' # Set all variables to NaN if sensor data fails
-        logging.error("Sensor is not ready. No sensor data available")
+        logging.error("Sensor is not ready or not heat_stable. No sensor data available. All vars set to 'U'")
         return temp_c, hum, dew, press, gas
 
 # Pi Zero W Temperature function

@@ -164,4 +164,4 @@ I realize this is turning more into a glorified weather station app, but that's 
 - ~~Break out graphing args to variables, squash common args to reusable variable~~
 - ~~Switch to built in Python module~~
 - ~~Break secrets out to external file (lat, lon, API key, etc)~~
-- Fix readings from barometer and gas resistance sensor on first loop iteration, time.sleep on BME680 initilization?
+- ~~Fix readings from barometer and gas resistance sensor on first loop iteration~~
