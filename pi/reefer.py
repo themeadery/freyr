@@ -20,6 +20,8 @@ logging.basicConfig(
     level=logging.INFO, # Set logging level. logging.WARNING = less info
     format='%(asctime)s - %(levelname)s - %(message)s')
 
+logging.warning("Starting reefer") # Throw something in the log on start just so I know everything is working
+
 # API query definitions
 #queryOWN = {'lat':secrets.LAT, 'lon':secrets.LON, 'appid':secrets.APPID} # OpenWeatherMap API
 
@@ -80,13 +82,14 @@ def calc_dewpoint(humidity, temp_c):
 def get_outdoor():
     logging.info("Outdoor sensor data:")
     try:
+        offset = 1.0 # Sensor correction in degrees C
         # Initialize variables so if request fails graphs still populate with NaN
         outdoor_c = outdoor_hum = outdoor_dew = picow_temp_c ='U'
 
         responseSatellite = sessionSatellite.get('http://192.168.0.5', timeout=10) # Don't use HTTPS
         responseSatellite.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
-        outdoor_c = responseSatellite.json()['temperature']
+        outdoor_c = responseSatellite.json()['temperature'] + offset
         outdoor_f = c_to_f(outdoor_c)
         outdoor_hum = responseSatellite.json()['humidity']
         outdoor_dew = calc_dewpoint(outdoor_hum, outdoor_c)
@@ -284,7 +287,7 @@ def create_graphs():
             "--vertical-label", "hPa",
             "--right-axis-label", "hPa",
             "--right-axis", "1:0", "--right-axis-format", "%4.0lf",
-            "--height", "300",
+            "--height", "280",
             "--lower-limit", "1002", "--upper-limit", "1030",
             "--y-grid", "1:2",
             "--units-exponent", "0",
@@ -309,7 +312,7 @@ def create_graphs():
             "--vertical-label", "Ω",
             "--right-axis-label", "Ω",
             "--right-axis", "1:0",
-            "--height", "300",
+            "--height", "250",
             "DEF:indoor=gas.rrd:indoor:LAST",
             "VDEF:indoorMax=indoor,MAXIMUM",
             "VDEF:indoorMin=indoor,MINIMUM",
