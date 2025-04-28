@@ -10,27 +10,36 @@ import math
 import logging
 from logging.handlers import RotatingFileHandler
 
-# Loop interval
+# Loop parameters
 interval = 60 # in seconds
 interval = timedelta(seconds=interval) # Convert integer into proper time format
+loop_counter = 0  # Add a counter to track number of loops
 
 # Set up logging
 logging.basicConfig(
     handlers=[RotatingFileHandler('reefer.log', maxBytes=4000000, backupCount=3)],
     level=logging.INFO, # Set logging level. logging.WARNING = less info
     format='%(asctime)s - %(levelname)s - %(message)s')
-
 logging.warning("Starting reefer") # Throw something in the log on start just so I know everything is working
-
-# API query definitions
-#queryOWN = {'lat':secrets.LAT, 'lon':secrets.LON, 'appid':secrets.APPID} # OpenWeatherMap API
-
-# Initialize HTTP(S) request sessions for reuse during API calls
-#sessionOWN = requests.Session() # OpenWeatherMap API
-sessionSatellite = requests.Session() # Pi Pico W + si7021 sensor API
 
 # Station altitude in meters
 sta_alt = secrets.STA_ALT
+
+# API query definitions
+#queryOWN = {'lat':secrets.LAT, 'lon':secrets.LON, 'appid':secrets.APPID} # OpenWeatherMap API
+urlOpenUV = "https://api.openuv.io/api/v1/uv"
+headersOpenUV = {"x-access-token": secrets.OPENUVKEY} # OpenUV.io API key
+paramsOpenUV = {
+    "lat": secrets.LAT,
+    "lng": secrets.LON,
+    "alt": sta_alt,
+    "dt": ""  # If you want to specify a datetime, you can put it here
+}
+
+# Initialize HTTP(S) request sessions for reuse during API calls
+#sessionOWN = requests.Session() # OpenWeatherMap API
+sessionOpenUV = requests.Session()
+sessionSatellite = requests.Session() # Pi Pico W + si7021 sensor API
 
 # Initialize BME680
 try:
@@ -85,7 +94,6 @@ def get_outdoor():
         offset = 1.0 # Sensor correction in degrees C
         # Initialize variables so if request fails graphs still populate with NaN
         outdoor_c = outdoor_hum = outdoor_dew = picow_temp_c ='U'
-
         responseSatellite = sessionSatellite.get('http://192.168.0.5', timeout=10) # Don't use HTTPS
         responseSatellite.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
@@ -109,6 +117,26 @@ def get_outdoor():
     except requests.exceptions.RequestException as err:
         logging.error(err)
     return outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c
+
+def get_OpenUV_Index():
+    logging.info("Fetching data from OpenUV:")
+    try:
+        uv = 'U' # Set to rrdtool's definition of NaN if request fails
+        responseOpenUV = sessionOpenUV.get(urlOpenUV, headers=headersOpenUV, params=paramsOpenUV, timeout=10)
+        responseOpenUV.raise_for_status() # If error, try to catch it in except clauses below
+        # Code below here will only run if the request is successful
+        uv = responseOpenUV.json()['result']['uv']
+        logging.info(f"UV Index: {uv}")
+    except requests.exceptions.HTTPError as errh: # If the error is an HTTP error code, then:
+        logging.error(errh) # log error code, example " - ERROR - 403 Client Error: Forbidden for url:"
+        logging.error(f"Full Response: {responseOpenUV.json()}") # Show full JSON response, Expected key should be 'error':
+    except requests.exceptions.ConnectionError as errc:
+        logging.error(errc)
+    except requests.exceptions.Timeout as errt:
+        logging.error(errt)
+    except requests.exceptions.RequestException as err:
+        logging.error(err)
+    return uv
 
 # Indoor BME680 function
 def get_indoor():
@@ -166,8 +194,8 @@ def create_graphs():
 
     # Reduce duplicate lines of code
     common_args = [
-        "--end", "now", "--start", "end-1780m", "--step", "120",
-        "--width", "890",
+        "--end", "now", "--start", "end-2000m", "--step", "120",
+        "--width", "1000",
         "--font", "DEFAULT:10:",
         "--font", "AXIS:8:",
         "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
@@ -328,6 +356,28 @@ def create_graphs():
         logging.info(f"Success! Width: {result[0]} Height: {result[1]} Extra Info: {result[2]}")
 
     try:
+        result = rrdtool.graph("/mnt/tmp/uv.png",
+            common_args,
+            "--title", "UV Index",
+            "--vertical-label", "Index",
+            "--right-axis-label", "Index",
+            "--right-axis", "1:0",
+            "--height", "250",
+            "DEF:outdoor=uv.rrd:outdoor:LAST",
+            "VDEF:outdoorMax=outdoor,MAXIMUM",
+            "VDEF:outdoorMin=outdoor,MINIMUM",
+            "LINE1:outdoor#ffa500:Outdoor",
+            "GPRINT:outdoor:LAST:Cur\: %.1lf",
+            "GPRINT:outdoorMax:Max\: %.1lf",
+            "GPRINT:outdoorMin:Min\: %.1lf\l"
+        )
+    except (rrdtool.ProgrammingError, rrdtool.OperationalError) as err:
+        logging.error(f"Error creating graph: {err}")
+        logging.error(f"Fail! Result: {result}")
+    else:
+        logging.info(f"Success! Width: {result[0]} Height: {result[1]} Extra Info: {result[2]}")
+
+    try:
         result = rrdtool.graph("/mnt/tmp/pi.png",
             common_args,
             "--title", "Pi Temperatures",
@@ -379,12 +429,18 @@ while True:
     indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
     #tank_c = 'U' # Tank sensor is broken so set to NaN
     pi_temp_c, pi_temp_f = pi_temp()
-    #update_rrd(outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c, indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas, pi_temp_c)
     logging.info("Updating RRD databases...")
     update_rrd("temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
     update_rrd("humidities.rrd", f"N:{outdoor_hum}:{indoor_hum}")
     update_rrd("pressures.rrd", f"N:{indoor_press}")
     update_rrd("gas.rrd", f"N:{indoor_gas}")
+
+    # Only update UV every 30 loops/minutes
+    if loop_counter % 30 == 0:
+        outdoorUV = get_OpenUV_Index()
+        update_rrd("uv.rrd", f"N:{outdoorUV}")
+    loop_counter += 1  # Increment loop counter
+
     logging.info("Done updating databases")
     create_graphs()
 
