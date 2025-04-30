@@ -26,7 +26,16 @@ logging.warning("Starting reefer") # Throw something in the log on start just so
 sta_alt = secrets.STA_ALT
 
 # API query definitions
-#queryOWN = {'lat':secrets.LAT, 'lon':secrets.LON, 'appid':secrets.APPID} # OpenWeatherMap API
+# OpenWeatherMap API
+urlOWM = "https://api.openweathermap.org/data/3.0/onecall"
+paramsOWM = {
+    "lat": secrets.LAT,
+    "lon": secrets.LON,
+    "exclude": "minutely,hourly,daily,alerts",
+    "units": "imperial",
+    "appid": secrets.OWMKEY
+}
+# OpenUV.io API
 urlOpenUV = "https://api.openuv.io/api/v1/uv"
 headersOpenUV = {"x-access-token": secrets.OPENUVKEY} # OpenUV.io API key
 paramsOpenUV = {
@@ -37,7 +46,7 @@ paramsOpenUV = {
 }
 
 # Initialize HTTP(S) request sessions for reuse during API calls
-#sessionOWN = requests.Session() # OpenWeatherMap API
+sessionOWM = requests.Session() # OpenWeatherMap API
 sessionOpenUV = requests.Session()
 sessionSatellite = requests.Session() # Pi Pico W + si7021 sensor API
 
@@ -137,6 +146,28 @@ def get_OpenUV_Index():
     except requests.exceptions.RequestException as err:
         logging.error(err)
     return uv
+
+def get_OWM():
+    logging.info("Fetching data from OpenWeatherMap:")
+    try:
+        wind = windGust = 'U' # Set to rrdtool's definition of NaN if request fails
+        responseOWM = sessionOWM.get(urlOWM, params=paramsOWM, timeout=10)
+        responseOWM.raise_for_status() # If error, try to catch it in except clauses below
+        # Code below here will only run if the request is successful
+        wind = responseOWM.json()['current']['wind_speed']
+        windGust = responseOWM.json()['current']['wind_gust']
+        logging.info(f"Wind: {wind} mph")
+        logging.info(f"Wind Gust: {windGust} mph")
+    except requests.exceptions.HTTPError as errh: # If the error is an HTTP error code, then:
+        logging.error(errh) # log error code, example " - ERROR - 403 Client Error: Forbidden for url:"
+        logging.error(f"Full Response: {responseOWM.json()}") # Show full JSON response, Expected key should be "cod" "message" and "parameters"
+    except requests.exceptions.ConnectionError as errc:
+        logging.error(errc)
+    except requests.exceptions.Timeout as errt:
+        logging.error(errt)
+    except requests.exceptions.RequestException as err:
+        logging.error(err)
+    return wind, windGust
 
 # Indoor BME680 function
 def get_indoor():
@@ -356,6 +387,35 @@ def create_graphs():
         logging.info(f"Success! Width: {result[0]} Height: {result[1]} Extra Info: {result[2]}")
 
     try:
+        result = rrdtool.graph("/mnt/tmp/wind.png",
+            common_args,
+            "--title", "Wind Speeds",
+            "--vertical-label", "Miles Per Hour",
+            "--right-axis-label", "Miles Per Hour",
+            "--right-axis", "1:0",
+            "--height", "250",
+            "DEF:outdoor_wind=wind.rrd:outdoor_wind:LAST",
+            "DEF:outdoor_windGust=wind.rrd:outdoor_windGust:LAST",
+            "VDEF:outdoor_windMax=outdoor_wind,MAXIMUM",
+            "VDEF:outdoor_windMin=outdoor_wind,MINIMUM",
+            "VDEF:outdoor_windGustMax=outdoor_windGust,MAXIMUM",
+            "VDEF:outdoor_windGustMin=outdoor_windGust,MINIMUM",
+            "LINE1:outdoor_wind#0000ff:Wind",
+            "GPRINT:outdoor_wind:LAST:Cur\: %.1lf",
+            "GPRINT:outdoor_windMax:Max\: %.1lf",
+            "GPRINT:outdoor_windMin:Min\: %.1lf\l",
+            "LINE1:outdoor_windGust#ff0000:Gust ",
+            "GPRINT:outdoor_windGust:LAST:Cur\: %.1lf",
+            "GPRINT:outdoor_windGustMax:Max\: %.1lf",
+            "GPRINT:outdoor_windGustMin:Min\: %.1lf\l"
+        )
+    except (rrdtool.ProgrammingError, rrdtool.OperationalError) as err:
+        logging.error(f"Error creating graph: {err}")
+        logging.error(f"Fail! Result: {result}")
+    else:
+        logging.info(f"Success! Width: {result[0]} Height: {result[1]} Extra Info: {result[2]}")
+
+    try:
         result = rrdtool.graph("/mnt/tmp/uv.png",
             common_args,
             "--title", "UV Index",
@@ -365,11 +425,9 @@ def create_graphs():
             "--height", "250",
             "DEF:outdoor=uv.rrd:outdoor:LAST",
             "VDEF:outdoorMax=outdoor,MAXIMUM",
-            "VDEF:outdoorMin=outdoor,MINIMUM",
             "LINE1:outdoor#ffa500:Outdoor",
             "GPRINT:outdoor:LAST:Cur\: %.1lf",
-            "GPRINT:outdoorMax:Max\: %.1lf",
-            "GPRINT:outdoorMin:Min\: %.1lf\l"
+            "GPRINT:outdoorMax:Max\: %.1lf\l"
         )
     except (rrdtool.ProgrammingError, rrdtool.OperationalError) as err:
         logging.error(f"Error creating graph: {err}")
@@ -427,7 +485,6 @@ while True:
     logging.info("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~") # Start logging cycle with a row of tildes to differentiate
     outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c = get_outdoor()
     indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
-    #tank_c = 'U' # Tank sensor is broken so set to NaN
     pi_temp_c, pi_temp_f = pi_temp()
     logging.info("Updating RRD databases...")
     update_rrd("temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
@@ -435,10 +492,16 @@ while True:
     update_rrd("pressures.rrd", f"N:{indoor_press}")
     update_rrd("gas.rrd", f"N:{indoor_gas}")
 
-    # Only update UV every 30 loops/minutes
+    # Only update UV every 30 loops/minutes because of API rate limits
     if loop_counter % 30 == 0:
         outdoorUV = get_OpenUV_Index()
         update_rrd("uv.rrd", f"N:{outdoorUV}")
+
+    # Only update wind every 2 loops/minutes because of API rate limits
+    if loop_counter % 2 == 0:
+        outdoor_wind, outdoor_windGust = get_OWM()
+        update_rrd("wind.rrd", f"N:{outdoor_wind}:{outdoor_windGust}")
+
     loop_counter += 1  # Increment loop counter
 
     logging.info("Done updating databases")
@@ -451,5 +514,6 @@ while True:
     # then sleep for the remaining time left
     # if it is less than the configured loop interval
     if started and ended and ended - started < interval:
-        logging.info("Sleeping...\n")
-        time.sleep((interval - (ended - started)).seconds)
+        remaining = interval.seconds - loop_time
+        logging.info(f"Sleeping for {remaining} seconds...\n")
+        time.sleep((interval - (ended - started)).seconds) # calculate this again (instead of using remaining var above) at the last moment so it's more precise

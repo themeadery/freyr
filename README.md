@@ -68,9 +68,10 @@ $ rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:G
 $ rrdtool create pressures.rrd --step 60 DS:indoor:GAUGE:120:800:1100 RRA:LAST:0.5:1:2880
 $ rrdtool create gas.rrd --step 60 DS:indoor:GAUGE:120:50:200000 RRA:LAST:0.5:1:2880
 $ rrdtool create uv.rrd --step 1800 DS:outdoor:GAUGE:3600:0:20 RRA:LAST:0.5:1:2880
+$ rrdtool create wind.rrd --step 120 DS:outdoor_wind:GAUGE:240:0:100 DS:outdoor_windGust:GAUGE:240:0:100 RRA:LAST:0.5:1:2880
 ```
 
-This will create databases with a 60 second interval, 120 second heartbeat timeout, between -20 and 55 degrees Celsius for the outdoor sensor, between 0 and 55 degrees Celsius for the indoor sensors, between -80 and 55 degrees Celsius dewpoints, 0-100 degrees Celsius for the pi CPU sensor, 0-100% relative humidity, 800-1100 hPa pressure, and 50-200,000 ohms gas resistance with 48 hours of data before rolling over. The uv database will have an 1800 second interval with a 3600 second heartbeat timeout (due to API rate limits at openuv.io) and a range between 0-20.
+This will create databases with a 60 second interval, 120 second heartbeat timeout, between -20 and 55 degrees Celsius for the outdoor sensor, between 0 and 55 degrees Celsius for the indoor sensors, between -80 and 55 degrees Celsius dewpoints, 0-100 degrees Celsius for the pi CPU sensor, 0-100% relative humidity, 800-1100 hPa pressure, and 50-200,000 ohms gas resistance with 48 hours of data before rolling over. The uv database will have an 1800 second interval with a 3600 second heartbeat timeout (due to API rate limits at openuv.io) and a range between 0-20 (unitless). The wind database will have a 120 second interval with a 240 second heartbeat timeout (due again to API rate limits at OWM) and a range between 0-100 mph.
 
 More information here: https://michael.bouvy.net/post/graph-data-rrdtool-sensors-arduino
 
