@@ -13,7 +13,6 @@ from logging.handlers import RotatingFileHandler
 # Loop parameters
 interval = 60 # in seconds
 interval = timedelta(seconds=interval) # Convert integer into proper time format
-loop_counter = 0  # Add a counter to track number of loops
 
 # Set up logging
 logging.basicConfig(
@@ -149,17 +148,21 @@ def get_OpenUV_Index():
 
 def get_OWM():
     logging.info("Fetching data from OpenWeatherMap:")
+    wind = windGust = 'U' # Set to rrdtool's definition of NaN if request fails
     try:
-        wind = windGust = 'U' # Set to rrdtool's definition of NaN if request fails
         responseOWM = sessionOWM.get(urlOWM, params=paramsOWM, timeout=10)
         responseOWM.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
-        wind = responseOWM.json()['current']['wind_speed']
-        windGust = responseOWM.json()['current']['wind_gust']
-        logging.info(f"Wind: {wind} mph")
-        logging.info(f"Wind Gust: {windGust} mph")
+        current_data = responseOWM.json().get('current', {}) # take the 'current' key values and throw them in 'current_data' 
+        wind = current_data.get('wind_speed', 'U') # if 'wind_speed' key does not exist, fallback to 'U' which is rrdtool's def of NaN
+        windGust = current_data.get('wind_gust', 'U') # if 'wind_gust' key does not exist, fallback to 'U' which is rrdtool's def of NaN
+        logging.info(f"Wind: {wind} mph") # this kinda assume the 'wind' key exists
+        if windGust != 'U':
+            logging.info(f"Wind Gust: {windGust} mph")
+        else:
+            logging.warning("Wind Gust data not available.") # catch/log the error I think was happening
     except requests.exceptions.HTTPError as errh: # If the error is an HTTP error code, then:
-        logging.error(errh) # log error code, example " - ERROR - 403 Client Error: Forbidden for url:"
+        logging.error(errh) # log error code, example "- ERROR - 429 Client Error: Too Many Requests for url:"
         logging.error(f"Full Response: {responseOWM.json()}") # Show full JSON response, Expected key should be "cod" "message" and "parameters"
     except requests.exceptions.ConnectionError as errc:
         logging.error(errc)
@@ -205,7 +208,7 @@ def pi_temp():
     temp_c = vcgencmd.measure_temp()
     temp_f = c_to_f(temp_c)
     logging.info(f"Pi Zero W: {temp_c:.2f} °C | {temp_f:.2f} °F")
-    return temp_c, temp_f
+    return temp_c
 
 # Update RRD databases function
 def update_rrd(rrd_filename, values_string):
@@ -478,42 +481,53 @@ def create_graphs():
 
     logging.info("Done creating graphs")
 
-# Main Loop
-while True:
-    started = datetime.now() # Start timing the operation
+# Main Loop Function
+# nest this into a function def so that I can try/except below to catch errors if it crashes
+# previously the Python app would crash with an error to stderr, but because it is run as a service I could not see/log those errors
+def main():
+    logging.info("Starting main while loop")
+    loop_counter = 0  # Add a counter to track number of loops
+    while True: # main while loop that should run forever
+        started = datetime.now() # Start timing the operation
 
-    logging.info("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~") # Start logging cycle with a row of tildes to differentiate
-    outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c = get_outdoor()
-    indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
-    pi_temp_c, pi_temp_f = pi_temp()
-    logging.info("Updating RRD databases...")
-    update_rrd("temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
-    update_rrd("humidities.rrd", f"N:{outdoor_hum}:{indoor_hum}")
-    update_rrd("pressures.rrd", f"N:{indoor_press}")
-    update_rrd("gas.rrd", f"N:{indoor_gas}")
+        logging.info("~~~~~~~~~~~~~~new cycle~~~~~~~~~~~~~~~~") # Start logging cycle with a row of tildes to differentiate
+        outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c = get_outdoor()
+        indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
+        pi_temp_c = pi_temp()
+        logging.info("Updating RRD databases...")
+        update_rrd("temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
+        update_rrd("humidities.rrd", f"N:{outdoor_hum}:{indoor_hum}")
+        update_rrd("pressures.rrd", f"N:{indoor_press}")
+        update_rrd("gas.rrd", f"N:{indoor_gas}")
 
-    # Only update UV every 30 loops/minutes because of API rate limits
-    if loop_counter % 30 == 0:
-        outdoorUV = get_OpenUV_Index()
-        update_rrd("uv.rrd", f"N:{outdoorUV}")
+        # Only update UV every 30 loops/minutes because of API rate limits
+        if loop_counter % 30 == 0:
+            outdoorUV = get_OpenUV_Index()
+            update_rrd("uv.rrd", f"N:{outdoorUV}")
 
-    # Only update wind every 2 loops/minutes because of API rate limits
-    if loop_counter % 2 == 0:
-        outdoor_wind, outdoor_windGust = get_OWM()
-        update_rrd("wind.rrd", f"N:{outdoor_wind}:{outdoor_windGust}")
+        # Only update wind every 2 loops/minutes because of API rate limits
+        if loop_counter % 2 == 0:
+            outdoor_wind, outdoor_windGust = get_OWM()
+            update_rrd("wind.rrd", f"N:{outdoor_wind}:{outdoor_windGust}")
 
-    loop_counter += 1  # Increment loop counter
+        loop_counter += 1  # Increment loop counter
 
-    logging.info("Done updating databases")
-    create_graphs()
+        logging.info("Done updating databases")
+        create_graphs()
 
-    ended = datetime.now() # Stop timing the operation
-    loop_time = (ended - started).seconds
-    logging.info(f"Loop took {loop_time} seconds")
-    # Compute the amount of time it took to run the loop above
-    # then sleep for the remaining time left
-    # if it is less than the configured loop interval
-    if started and ended and ended - started < interval:
-        remaining = interval.seconds - loop_time
-        logging.info(f"Sleeping for {remaining} seconds...\n")
-        time.sleep((interval - (ended - started)).seconds) # calculate this again (instead of using remaining var above) at the last moment so it's more precise
+        ended = datetime.now() # Stop timing the operation
+        loop_time = (ended - started).seconds
+        logging.info(f"Loop took {loop_time} seconds")
+        # Compute the amount of time it took to run the loop above
+        # then sleep for the remaining time left
+        # if it is less than the configured loop interval
+        if started and ended and ended - started < interval:
+            remaining = interval.seconds - loop_time
+            logging.info(f"Sleeping for {remaining} seconds...")
+            time.sleep((interval - (ended - started)).seconds) # calculate this again (instead of using remaining var above) at the last moment so it's more precise
+
+if __name__ == "__main__":
+   try:
+      main()
+   except Exception as e:
+      logging.exception("main crashed. Error: %s", e)
