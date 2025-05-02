@@ -527,7 +527,7 @@ def main():
             time.sleep((interval - (ended - started)).seconds) # calculate this again (instead of using remaining var above) at the last moment so it's more precise
 
 if __name__ == "__main__":
-   try:
-      main()
-   except Exception as e:
-      logging.exception("main crashed. Error: %s", e)
+    try:
+        main()
+    except Exception as e:
+        logging.exception(f"main crashed. Error: {e}")

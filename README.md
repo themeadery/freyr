@@ -14,7 +14,7 @@ I moved the project from a FT232H to a Raspberry Pi Zero W and added a DS18B20 w
 
 #### BME680
 
-https://pinout.xyz/pinout/i2c
+<https://pinout.xyz/pinout/i2c>
 
 - VCC to 3v3 (pin 1)
 - GND to ground (any)
@@ -27,7 +27,7 @@ During testing I kept having failures of the sensor until I discovered an unoffi
 
 #### Si7021
 
-https://pinout.xyz/pinout/i2c
+<https://pinout.xyz/pinout/i2c>
 
 - VIN to 3v3 (pin 1)
 - GND to ground (pin 9)
@@ -38,7 +38,7 @@ This sensor always seems to work no matter what and is very accurate. I am impre
 
 #### DS18B20
 
-https://pinout.xyz/pinout/1_wire
+<https://pinout.xyz/pinout/1_wire>
 
 - Red Wire to 5v (pin 2)
 - Blue Wire to ground (pin 6 or 9)
@@ -50,6 +50,7 @@ According to my testing, Google searches, and the DS18B20 datasheet 3v3 is not e
 ### Dependencies
 
 You can satisfy pretty much all dependencies with these commands on a fresh Pi:
+
 ```bash
 $ sudo apt install git nginx rrdtool python3-rrdtool python3-pip
 $ sudo pip install adafruit-circuitpython-si7021
@@ -73,7 +74,7 @@ $ rrdtool create wind.rrd --step 120 DS:outdoor_wind:GAUGE:240:0:100 DS:outdoor_
 
 This will create databases with a 60 second interval, 120 second heartbeat timeout, between -20 and 55 degrees Celsius for the outdoor sensor, between 0 and 55 degrees Celsius for the indoor sensors, between -80 and 55 degrees Celsius dewpoints, 0-100 degrees Celsius for the pi CPU sensor, 0-100% relative humidity, 800-1100 hPa pressure, and 50-200,000 ohms gas resistance with 48 hours of data before rolling over. The uv database will have an 1800 second interval with a 3600 second heartbeat timeout (due to API rate limits at openuv.io) and a range between 0-20 (unitless). The wind database will have a 120 second interval with a 240 second heartbeat timeout (due again to API rate limits at OWM) and a range between 0-100 mph.
 
-More information here: https://michael.bouvy.net/post/graph-data-rrdtool-sensors-arduino
+More information here: <https://michael.bouvy.net/post/graph-data-rrdtool-sensors-arduino>
 
 ### HTML
 
@@ -99,7 +100,7 @@ Use the example below to turn a light on at 7:00 AM and off at 7:00 PM:
 $ crontab -e
 ```
 
-```
+```text
 # m h  dom mon dow   command
 0 7 * * * python /home/pi/relayOn.py
 0 19 * * * python /home/pi/relayOff.py
@@ -134,7 +135,7 @@ This should automatically restart the script if it fails in any fashion and also
 
 The ```reefer.service``` systemd unit file is very simple and included in the repo:
 
-```
+```text
 [Unit]
 Description=Reefer Service
 After=network.target
