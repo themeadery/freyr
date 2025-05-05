@@ -9,6 +9,7 @@ import vcgencmd
 import math
 import logging
 from logging.handlers import RotatingFileHandler
+import sqlite3
 
 # Loop parameters
 interval = 60 # in seconds
@@ -20,6 +21,15 @@ logging.basicConfig(
     level=logging.INFO, # Set logging level. logging.WARNING = less info
     format='%(asctime)s - %(levelname)s - %(message)s')
 logging.warning("Starting reefer") # Throw something in the log on start just so I know everything is working
+
+# Connect to SQLite db
+try:
+    database = "freyr.db"
+    logging.info(f"Connecting to SQLite database called: {database}")
+    connection = sqlite3.connect(database)
+    cursor = connection.cursor()
+except Exception as e:
+    logging.error(f"Couldn't open SQLite database called: {database}")
 
 # Station altitude in meters
 sta_alt = secrets.STA_ALT
@@ -512,6 +522,12 @@ def main():
 
         loop_counter += 1  # Increment loop counter
 
+        # Update SQLite database
+        # break this out into a function def above
+        logging.info(f"Updating SQLite database called: {database}")
+        cursor.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press))
+        connection.commit()
+
         logging.info("Done updating databases")
         create_graphs()
 
@@ -531,3 +547,7 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         logging.exception(f"main crashed. Error: {e}")
+    finally:
+        logging.warning("Closing connection to SQLite database...")
+        connection.close()
+        logging.warning("Exiting reefer")
