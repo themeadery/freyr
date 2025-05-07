@@ -1,7 +1,7 @@
 import time
 from datetime import datetime
 from datetime import timedelta
-import secrets
+import config
 import bme680
 import requests
 import rrdtool
@@ -29,27 +29,27 @@ try:
     connection = sqlite3.connect(database)
     cursor = connection.cursor()
 except Exception as e:
-    logging.error(f"Couldn't open SQLite database: {database}")
+    logging.error(f"Couldn't open SQLite database {database}: {e}")
 
 # Station altitude in meters
-sta_alt = secrets.STA_ALT
+sta_alt = config.STA_ALT
 
 # API query definitions
 # OpenWeatherMap API
 urlOWM = "https://api.openweathermap.org/data/3.0/onecall"
 paramsOWM = {
-    "lat": secrets.LAT,
-    "lon": secrets.LON,
+    "lat": config.LAT,
+    "lon": config.LON,
     "exclude": "minutely,hourly,daily,alerts",
     "units": "imperial",
-    "appid": secrets.OWMKEY
+    "appid": config.OWMKEY
 }
 # OpenUV.io API
 urlOpenUV = "https://api.openuv.io/api/v1/uv"
-headersOpenUV = {"x-access-token": secrets.OPENUVKEY} # OpenUV.io API key
+headersOpenUV = {"x-access-token": config.OPENUVKEY} # OpenUV.io API key
 paramsOpenUV = {
-    "lat": secrets.LAT,
-    "lng": secrets.LON,
+    "lat": config.LAT,
+    "lng": config.LON,
     "alt": sta_alt,
     "dt": ""  # If you want to specify a datetime, you can put it here
 }
@@ -493,9 +493,8 @@ def create_graphs():
 
 # Updates the SQLite database with the provided data
 def update_sqlite_database(started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press):
-
     try:
-        logging.info(f"Updating SQLite database called: {database}")
+        logging.info(f"Updating SQLite database: {database}")
         cursor.execute(
             "INSERT INTO data VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press)

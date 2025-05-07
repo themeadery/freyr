@@ -3,5 +3,6 @@ archive
 pi/reefer-private.py
 *.zip
 **secrets.py
+config.py
 Pi Pico W/webrepl_cfg.py
 /relay
