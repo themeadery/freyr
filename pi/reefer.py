@@ -25,11 +25,11 @@ logging.warning("Starting reefer") # Throw something in the log on start just so
 # Connect to SQLite db
 try:
     database = "freyr.db"
-    logging.info(f"Connecting to SQLite database called: {database}")
+    logging.info(f"Connecting to SQLite database: {database}")
     connection = sqlite3.connect(database)
     cursor = connection.cursor()
 except Exception as e:
-    logging.error(f"Couldn't open SQLite database called: {database}")
+    logging.error(f"Couldn't open SQLite database: {database}")
 
 # Station altitude in meters
 sta_alt = secrets.STA_ALT
@@ -491,6 +491,20 @@ def create_graphs():
 
     logging.info("Done creating graphs")
 
+# Updates the SQLite database with the provided data
+def update_sqlite_database(started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press):
+
+    try:
+        logging.info(f"Updating SQLite database called: {database}")
+        cursor.execute(
+            "INSERT INTO data VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press)
+        )
+        connection.commit()
+        logging.info(f"SQLite database {database} updated successfully.")
+    except sqlite3.Error as e:
+        logging.error(f"Error updating SQLite database: {e}")
+
 # Main Loop Function
 # nest this into a function def so that I can try/except below to catch errors if it crashes
 # previously the Python app would crash with an error to stderr, but because it is run as a service I could not see/log those errors
@@ -499,8 +513,8 @@ def main():
     loop_counter = 0  # Add a counter to track number of loops
     while True: # main while loop that should run forever
         started = datetime.now() # Start timing the operation
-
         logging.info("~~~~~~~~~~~~~~new cycle~~~~~~~~~~~~~~~~") # Start logging cycle with a row of tildes to differentiate
+
         outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c = get_outdoor()
         indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
         pi_temp_c = pi_temp()
@@ -523,10 +537,7 @@ def main():
         loop_counter += 1  # Increment loop counter
 
         # Update SQLite database
-        # break this out into a function def above
-        logging.info(f"Updating SQLite database called: {database}")
-        cursor.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press))
-        connection.commit()
+        update_sqlite_database(started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press)
 
         logging.info("Done updating databases")
         create_graphs()
