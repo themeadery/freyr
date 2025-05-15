@@ -264,18 +264,18 @@ def create_graphs():
             "--right-axis-label", "Fahrenheit",
             "--right-axis", "1.8:32",
             "--height", "380",
-            "DEF:outdoor=temperatures.rrd:outdoor:LAST",
-            "DEF:indoor=temperatures.rrd:indoor:LAST",
-            "DEF:outdoor_dew=temperatures.rrd:outdoor_dew:LAST",
-            "DEF:indoor_dew=temperatures.rrd:indoor_dew:LAST",
-            "DEF:outdoorMax=temperatures.rrd:outdoor:MAX",
-            "DEF:indoorMax=temperatures.rrd:indoor:MAX",
-            "DEF:outdoor_dewMax=temperatures.rrd:outdoor_dew:MAX",
-            "DEF:indoor_dewMax=temperatures.rrd:indoor_dew:MAX",
-            "DEF:outdoorMin=temperatures.rrd:outdoor:MIN",
-            "DEF:indoorMin=temperatures.rrd:indoor:MIN",
-            "DEF:outdoor_dewMin=temperatures.rrd:outdoor_dew:MIN",
-            "DEF:indoor_dewMin=temperatures.rrd:indoor_dew:MIN",
+            "DEF:outdoor=./rrd/temperatures.rrd:outdoor:LAST",
+            "DEF:indoor=./rrd/temperatures.rrd:indoor:LAST",
+            "DEF:outdoor_dew=./rrd/temperatures.rrd:outdoor_dew:LAST",
+            "DEF:indoor_dew=./rrd/temperatures.rrd:indoor_dew:LAST",
+            "DEF:outdoorMax=./rrd/temperatures.rrd:outdoor:MAX",
+            "DEF:indoorMax=./rrd/temperatures.rrd:indoor:MAX",
+            "DEF:outdoor_dewMax=./rrd/temperatures.rrd:outdoor_dew:MAX",
+            "DEF:indoor_dewMax=./rrd/temperatures.rrd:indoor_dew:MAX",
+            "DEF:outdoorMin=./rrd/temperatures.rrd:outdoor:MIN",
+            "DEF:indoorMin=./rrd/temperatures.rrd:indoor:MIN",
+            "DEF:outdoor_dewMin=./rrd/temperatures.rrd:outdoor_dew:MIN",
+            "DEF:indoor_dewMin=./rrd/temperatures.rrd:indoor_dew:MIN",
             "CDEF:outdoor-f=outdoor,1.8,*,32,+",
             "CDEF:indoor-f=indoor,1.8,*,32,+",
             "CDEF:outdoor_dew-f=outdoor_dew,1.8,*,32,+",
@@ -331,8 +331,8 @@ def create_graphs():
             "--right-axis-label", "Relative (%)",
             "--right-axis", "1:0",
             "--height", "300",
-            "DEF:outdoor=humidities.rrd:outdoor:LAST",
-            "DEF:indoor=humidities.rrd:indoor:LAST",
+            "DEF:outdoor=./rrd/humidities.rrd:outdoor:LAST",
+            "DEF:indoor=./rrd/humidities.rrd:indoor:LAST",
             "VDEF:outdoorMax=outdoor,MAXIMUM",
             "VDEF:outdoorMin=outdoor,MINIMUM",
             "VDEF:indoorMax=indoor,MAXIMUM",
@@ -363,7 +363,7 @@ def create_graphs():
             "--lower-limit", "1002", "--upper-limit", "1030",
             "--y-grid", "1:2",
             "--units-exponent", "0",
-            "DEF:indoor=pressures.rrd:indoor:LAST",
+            "DEF:indoor=./rrd/pressures.rrd:indoor:LAST",
             "VDEF:indoorMax=indoor,MAXIMUM",
             "VDEF:indoorMin=indoor,MINIMUM",
             "LINE1:indoor#00ff00:Local",
@@ -385,7 +385,7 @@ def create_graphs():
             "--right-axis-label", "Ω",
             "--right-axis", "1:0",
             "--height", "250",
-            "DEF:indoor=gas.rrd:indoor:LAST",
+            "DEF:indoor=./rrd/gas.rrd:indoor:LAST",
             "VDEF:indoorMax=indoor,MAXIMUM",
             "VDEF:indoorMin=indoor,MINIMUM",
             "LINE1:indoor#0000ff:Indoor",
@@ -407,8 +407,8 @@ def create_graphs():
             "--right-axis-label", "Miles Per Hour",
             "--right-axis", "1:0",
             "--height", "250",
-            "DEF:outdoor_wind=wind.rrd:outdoor_wind:LAST",
-            "DEF:outdoor_windGust=wind.rrd:outdoor_windGust:LAST",
+            "DEF:outdoor_wind=./rrd/wind.rrd:outdoor_wind:LAST",
+            "DEF:outdoor_windGust=./rrd/wind.rrd:outdoor_windGust:LAST",
             "VDEF:outdoor_windMax=outdoor_wind,MAXIMUM",
             "VDEF:outdoor_windMin=outdoor_wind,MINIMUM",
             "VDEF:outdoor_windGustMax=outdoor_windGust,MAXIMUM",
@@ -436,7 +436,7 @@ def create_graphs():
             "--right-axis-label", "Index",
             "--right-axis", "1:0",
             "--height", "250",
-            "DEF:outdoor=uv.rrd:outdoor:LAST",
+            "DEF:outdoor=./rrd/uv.rrd:outdoor:LAST",
             "VDEF:outdoorMax=outdoor,MAXIMUM",
             "LINE1:outdoor#ffa500:Outdoor",
             "GPRINT:outdoor:LAST:Cur\: %.1lf",
@@ -456,12 +456,12 @@ def create_graphs():
             "--right-axis-label", "Fahrenheit",
             "--right-axis", "1.8:32",
             "--height", "150",
-            "DEF:pi=temperatures.rrd:pi:LAST",
-            "DEF:picow=temperatures.rrd:picow:LAST",
-            "DEF:piMax=temperatures.rrd:pi:MAX",
-            "DEF:picowMax=temperatures.rrd:picow:MAX",
-            "DEF:piMin=temperatures.rrd:pi:MIN",
-            "DEF:picowMin=temperatures.rrd:picow:MIN",
+            "DEF:pi=./rrd/temperatures.rrd:pi:LAST",
+            "DEF:picow=./rrd/temperatures.rrd:picow:LAST",
+            "DEF:piMax=./rrd/temperatures.rrd:pi:MAX",
+            "DEF:picowMax=./rrd/temperatures.rrd:picow:MAX",
+            "DEF:piMin=./rrd/temperatures.rrd:pi:MIN",
+            "DEF:picowMin=./rrd/temperatures.rrd:picow:MIN",
             "CDEF:pi-f=pi,1.8,*,32,+",
             "CDEF:picow-f=picow,1.8,*,32,+",
             "CDEF:piMax-f=piMax,1.8,*,32,+",
@@ -518,20 +518,20 @@ def main():
         indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
         pi_temp_c = pi_temp()
         logging.info("Updating RRD databases...")
-        update_rrd("temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
-        update_rrd("humidities.rrd", f"N:{outdoor_hum}:{indoor_hum}")
-        update_rrd("pressures.rrd", f"N:{indoor_press}")
-        update_rrd("gas.rrd", f"N:{indoor_gas}")
+        update_rrd("./rrd/temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
+        update_rrd("./rrd/humidities.rrd", f"N:{outdoor_hum}:{indoor_hum}")
+        update_rrd("./rrd/pressures.rrd", f"N:{indoor_press}")
+        update_rrd("./rrd/gas.rrd", f"N:{indoor_gas}")
 
         # Only update UV every 30 loops/minutes because of API rate limits
         if loop_counter % 30 == 0:
             outdoorUV = get_OpenUV_Index()
-            update_rrd("uv.rrd", f"N:{outdoorUV}")
+            update_rrd("./rrd/uv.rrd", f"N:{outdoorUV}")
 
         # Only update wind every 2 loops/minutes because of API rate limits
         if loop_counter % 2 == 0:
             outdoor_wind, outdoor_windGust = get_OWM()
-            update_rrd("wind.rrd", f"N:{outdoor_wind}:{outdoor_windGust}")
+            update_rrd("./rrd/wind.rrd", f"N:{outdoor_wind}:{outdoor_windGust}")
 
         loop_counter += 1  # Increment loop counter
 

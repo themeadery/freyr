@@ -173,3 +173,4 @@ I realize this is turning more into a glorified weather station app, but that's 
 - ~~Break secrets out to external file (lat, lon, API key, etc)~~
 - ~~Fix readings from barometer and gas resistance sensor on first loop iteration~~
 - Rename project to Freyr
+- Throw away first pressure reading
