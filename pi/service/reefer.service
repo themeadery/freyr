@@ -5,7 +5,10 @@ After=network.target
 [Service]
 Type=simple
 ExecStart=/usr/bin/python /home/pi/reefer.py
+User=pi
+Group=pi
 Restart=always
+WorkingDirectory=/home/pi
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target

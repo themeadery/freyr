@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Reefer</title>
+<link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+<meta charset="UTF-8">
+<style>
+body {
+    background-color: rgb(24, 25, 26);
+    color: white;
+}
+</style>
+</head>
+<body>
+
+<img src="{{url_for('static', filename='temperatures.png')}}">
+<br>
+<img src="{{url_for('static', filename='humidities.png')}}">
+<br>
+<img src="{{url_for('static', filename='pressures.png')}}">
+<br>
+<img src="{{url_for('static', filename='uv.png')}}">
+<br>
+<img src="{{url_for('static', filename='wind.png')}}">
+<br>
+<img src="{{url_for('static', filename='gas.png')}}">
+<br>
+<img src="{{url_for('static', filename='pi.png')}}">
+
+<script>
+    window.onload = function() {
+        setTimeout(function () {
+            location.reload()
+        }, 30000);
+     };
+</script>
+
+</body>
+</html>

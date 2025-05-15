@@ -1,4 +1,6 @@
-# reefer
+# Freyr
+
+NOTE: This documentation is horribly out of date. There is exactly ONE user of this software: me, so updating it hasn't been a priority. I keep making major changes and not documenting.
 
 tl;dr Yeah, but what does it look like?
 
@@ -52,9 +54,9 @@ According to my testing, Google searches, and the DS18B20 datasheet 3v3 is not e
 You can satisfy pretty much all dependencies with these commands on a fresh Pi:
 
 ```bash
-$ sudo apt install git nginx rrdtool python3-rrdtool python3-pip
-$ sudo pip install adafruit-circuitpython-si7021
-$ sudo pip install git+https://github.com/nicmcd/vcgencmd.git
+sudo apt install git nginx rrdtool python3-rrdtool python3-pip
+sudo pip install adafruit-circuitpython-si7021
+sudo pip install git+https://github.com/nicmcd/vcgencmd.git
 ```
 
 I2C and 1-Wire interfaces must be turned on in ```$ sudo raspi-config```
@@ -64,12 +66,12 @@ I2C and 1-Wire interfaces must be turned on in ```$ sudo raspi-config```
 #### Create RRD databases
 
 ```bash
-$ rrdtool create temperatures.rrd --step 60 DS:outdoor:GAUGE:120:-20:55 DS:indoor:GAUGE:120:0:55 DS:tank:GAUGE:120:0:55 DS:pi:GAUGE:120:0:100 DS:picow:GAUGE:120:0:100 DS:outdoor_dew:GAUGE:120:-80:55 DS:indoor_dew:GAUGE:120:-80:55 RRA:LAST:0.5:1:2880
-$ rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:GAUGE:120:0:100 RRA:LAST:0.5:1:2880
-$ rrdtool create pressures.rrd --step 60 DS:indoor:GAUGE:120:800:1100 RRA:LAST:0.5:1:2880
-$ rrdtool create gas.rrd --step 60 DS:indoor:GAUGE:120:50:200000 RRA:LAST:0.5:1:2880
-$ rrdtool create uv.rrd --step 1800 DS:outdoor:GAUGE:3600:0:20 RRA:LAST:0.5:1:2880
-$ rrdtool create wind.rrd --step 120 DS:outdoor_wind:GAUGE:240:0:100 DS:outdoor_windGust:GAUGE:240:0:100 RRA:LAST:0.5:1:2880
+rrdtool create temperatures.rrd --step 60 DS:outdoor:GAUGE:120:-20:55 DS:indoor:GAUGE:120:0:55 DS:tank:GAUGE:120:0:55 DS:pi:GAUGE:120:0:100 DS:picow:GAUGE:120:0:100 DS:outdoor_dew:GAUGE:120:-80:55 DS:indoor_dew:GAUGE:120:-80:55 RRA:LAST:0.5:1:2880
+rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:GAUGE:120:0:100 RRA:LAST:0.5:1:2880
+rrdtool create pressures.rrd --step 60 DS:indoor:GAUGE:120:800:1100 RRA:LAST:0.5:1:2880
+rrdtool create gas.rrd --step 60 DS:indoor:GAUGE:120:50:200000 RRA:LAST:0.5:1:2880
+rrdtool create uv.rrd --step 1800 DS:outdoor:GAUGE:3600:0:20 RRA:LAST:0.5:1:2880
+rrdtool create wind.rrd --step 120 DS:outdoor_wind:GAUGE:240:0:100 DS:outdoor_windGust:GAUGE:240:0:100 RRA:LAST:0.5:1:2880
 ```
 
 This will create databases with a 60 second interval, 120 second heartbeat timeout, between -20 and 55 degrees Celsius for the outdoor sensor, between 0 and 55 degrees Celsius for the indoor sensors, between -80 and 55 degrees Celsius dewpoints, 0-100 degrees Celsius for the pi CPU sensor, 0-100% relative humidity, 800-1100 hPa pressure, and 50-200,000 ohms gas resistance with 48 hours of data before rolling over. The uv database will have an 1800 second interval with a 3600 second heartbeat timeout (due to API rate limits at openuv.io) and a range between 0-20 (unitless). The wind database will have a 120 second interval with a 240 second heartbeat timeout (due again to API rate limits at OWM) and a range between 0-100 mph.
@@ -97,7 +99,7 @@ I used ```relay.py``` for a while, but there's no need to have a constantly runn
 Use the example below to turn a light on at 7:00 AM and off at 7:00 PM:
 
 ```bash
-$ crontab -e
+crontab -e
 ```
 
 ```text
@@ -109,8 +111,8 @@ $ crontab -e
 ### More Advanced Relay Control
 
 ```bash
-$ pip install flask
-$ python relayControl.py
+pip install flask
+python relayControl.py
 ```
 
 This will launch a webserver that hosts a very simple webpage with some buttons that control a relay. This depends on relayOn.py and relayOff.py, which you can edit to your liking and of course expand everything to control more relays.
@@ -124,11 +126,11 @@ The API's I am poking prove to be a continuous source of beard-pulling as I try 
 systemd to the rescue?
 
 ```bash
-$ mkdir -p .config/systemd/user
-$ cp reefer.service .config/systemd/user
-$ systemctl --user start reefer
-$ systemctl --user enable reefer
-$ sudo loginctl enable-linger pi
+mkdir -p .config/systemd/user
+cp reefer.service .config/systemd/user
+systemctl --user start reefer
+systemctl --user enable reefer
+sudo loginctl enable-linger pi
 ```
 
 This should automatically restart the script if it fails in any fashion and also log it properly. Note that this service is running as the unprivileged 'pi' user. The way I have my files setup in the pi home dir and nginx makes this work for my particular setup. You could do this all as root in ```/etc/systemd/system``` if you want to do it that way and manage permissions accordingly.
@@ -149,13 +151,15 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
+Note: The service file(s) have been updated to run as root like most services. No need to 'systemctl --user' anymore.
+
 I realize this is turning more into a glorified weather station app, but that's where my interests have led me!
 
 #### TODO
 
 - ~~Move generated files to tmpfs as to not kill the sdcard with all the writes.~~
 - Document tmpfs and symbolic link to files
-- Maybe switch from nginx to built-in Python webserver to further reduce system load, configuration, writes to sdcard, etc.
+- ~~Maybe switch from nginx to built-in Python webserver to further reduce system load, configuration, writes to sdcard, etc.~~
 - Remove DS18B20 references and documentation
 - Add BME680 documentation
 - ~~Add Pi Pico W + Si7021 sattelite sensor code~~ and documentation
@@ -168,3 +172,4 @@ I realize this is turning more into a glorified weather station app, but that's 
 - ~~Switch to built in Python module~~
 - ~~Break secrets out to external file (lat, lon, API key, etc)~~
 - ~~Fix readings from barometer and gas resistance sensor on first loop iteration~~
+- Rename project to Freyr

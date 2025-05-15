@@ -17,7 +17,7 @@ interval = timedelta(seconds=interval) # Convert integer into proper time format
 
 # Set up logging
 logging.basicConfig(
-    handlers=[RotatingFileHandler('reefer.log', maxBytes=4000000, backupCount=3)],
+    handlers=[RotatingFileHandler('./log/reefer.log', maxBytes=4000000, backupCount=3)],
     level=logging.INFO, # Set logging level. logging.WARNING = less info
     format='%(asctime)s - %(levelname)s - %(message)s')
 logging.warning("Starting reefer") # Throw something in the log on start just so I know everything is working

@@ -1,0 +1,18 @@
+[Unit]
+Description=FreyrFlask Service
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python /home/pi/freyrFlask.py
+ExecStartPre=+/sbin/sysctl -w net.ipv4.ip_forward=1
+ExecStartPre=+/sbin/iptables -t nat -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports 5000
+ExecStopPost=+/sbin/iptables -t nat -D PREROUTING -p tcp --dport 80 -j REDIRECT --to-ports 5000
+# Below user and group only apply to the ExecStart line (without the '+' prefix)
+User=pi
+Group=pi
+Restart=always
+WorkingDirectory=/home/pi
+
+[Install]
+WantedBy=multi-user.target

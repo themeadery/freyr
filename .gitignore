@@ -6,3 +6,5 @@ pi/reefer-private.py
 config.py
 Pi Pico W/webrepl_cfg.py
 /relay
+*.log
+*.db
