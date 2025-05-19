@@ -10,6 +10,8 @@ import math
 import logging
 from logging.handlers import RotatingFileHandler
 import sqlite3
+import signal
+import sys
 
 # Loop parameters
 interval = 60 # in seconds
@@ -522,6 +524,17 @@ def notify_flask():
     except Exception as e:
         logging.error(f"Failed to notify Flask: {e}")
 
+# Graceful exit function
+def graceful_exit(signal_number, stack_frame):
+    signal_name = signal.Signals(signal_number).name
+    logging.warning(f"Received signal {signal_name} to exit. Cleaning up...")
+    # Close the SQLite connection
+    if connection:
+        connection.close()
+        logging.warning(f"Closed connection to SQLite database: {database}")
+    logging.warning("Exiting freyr...")
+    sys.exit(0)
+
 # Main Loop Function
 # nest this into a function def so that I can try/except below to catch errors if it crashes
 # previously the Python app would crash with an error to stderr, but because it is run as a service I could not see/log those errors
@@ -538,8 +551,17 @@ def main():
         logging.info("Updating RRD databases...")
         update_rrd("./rrd/temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
         update_rrd("./rrd/humidities.rrd", f"N:{outdoor_hum}:{indoor_hum}")
-        update_rrd("./rrd/pressures.rrd", f"N:{indoor_press}")
+        #update_rrd("./rrd/pressures.rrd", f"N:{indoor_press}")
         update_rrd("./rrd/gas.rrd", f"N:{indoor_gas}")
+
+        # Throw away first pressure reading, because it is always garbage
+        # despite attempts in the beginning of this file to solve this
+        if loop_counter == 0:
+            logging.info("Throwing away first pressure reading")
+            indoor_press = 'U'
+            update_rrd("./rrd/pressures.rrd", f"N:{indoor_press}")
+        else:
+            update_rrd("./rrd/pressures.rrd", f"N:{indoor_press}")
 
         # Only update UV every 30 loops/minutes because of API rate limits
         if loop_counter % 30 == 0:
@@ -575,10 +597,8 @@ def main():
 
 if __name__ == "__main__":
     try:
+        signal.signal(signal.SIGINT, graceful_exit)
+        signal.signal(signal.SIGTERM, graceful_exit)
         main()
     except Exception as e:
         logging.exception(f"main crashed. Error: {e}")
-    finally:
-        logging.warning("Closing connection to SQLite database...")
-        connection.close()
-        logging.warning("Exiting freyr")
