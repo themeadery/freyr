@@ -504,6 +504,24 @@ def update_sqlite_database(started, outdoor_c, outdoor_dew, outdoor_hum, indoor_
     except sqlite3.Error as e:
         logging.error(f"Error updating SQLite database: {e}")
 
+# Inter-process communication with 'freyrFlask.py'
+def notify_flask():
+    try:
+        responseFlask = requests.post("http://127.0.0.1:5000/notify", timeout=5)
+        responseFlask.raise_for_status()  # Raise an error for bad responses
+        # Code below here will only run if the request is successful
+        logging.info(f"Flask notified: {responseFlask.status_code} - {responseFlask.text}")
+    except requests.exceptions.HTTPError as errh: # If the error is an HTTP error code, then:
+        logging.error(errh) # log error code
+    except requests.exceptions.ConnectionError as errc:
+        logging.error(errc)
+    except requests.exceptions.Timeout as errt:
+        logging.error(errt)
+    except requests.exceptions.RequestException as err:
+        logging.error(err)
+    except Exception as e:
+        logging.error(f"Failed to notify Flask: {e}")
+
 # Main Loop Function
 # nest this into a function def so that I can try/except below to catch errors if it crashes
 # previously the Python app would crash with an error to stderr, but because it is run as a service I could not see/log those errors
@@ -540,6 +558,9 @@ def main():
 
         logging.info("Done updating databases")
         create_graphs()
+
+        # Notify Flask server
+        notify_flask()
 
         ended = datetime.now() # Stop timing the operation
         loop_time = (ended - started).seconds

@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, render_template, send_from_directory
+from flask_socketio import SocketIO
 import os
 import logging
 from logging.handlers import RotatingFileHandler
@@ -6,6 +7,7 @@ import sqlite3
 
 app = Flask(__name__)
 app.json.sort_keys = False # Don't sort the keys in the JSON response to alphabetical order
+socketio = SocketIO(app)
 
 # Set up logging
 logging.basicConfig(
@@ -54,10 +56,6 @@ def read_sqlite_database():
         logging.error("No data found in SQLite database.")
         return jsonify({"error": "No data found"}), 404
 
-@app.route('/api')
-def api():
-    return read_sqlite_database()
-
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -67,5 +65,16 @@ def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'),
         'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
+@app.route('/api')
+def api():
+    return read_sqlite_database()
+
+# Inter-process communication with 'freyr.py'
+@app.route('/notify', methods=['POST'])
+def notify():
+    socketio.emit('new_images', {'message': 'refresh'}) # Will trigger images in page to refresh
+    logging.info("Received notification to refresh images.")
+    return 'Notified clients', 200
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
