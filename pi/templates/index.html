@@ -13,44 +13,32 @@ body {
 </head>
 <body>
 
-<img id="img1" src="{{url_for('static', filename='temperatures.png')}}">
+<img class="auto-refresh" src="{{url_for('static', filename='temperatures.png')}}">
 <br>
-<img id="img2" src="{{url_for('static', filename='humidities.png')}}">
+<img class="auto-refresh" src="{{url_for('static', filename='humidities.png')}}">
 <br>
-<img id="img3" src="{{url_for('static', filename='pressures.png')}}">
+<img class="auto-refresh" src="{{url_for('static', filename='pressures.png')}}">
 <br>
-<img id="img4" src="{{url_for('static', filename='uv.png')}}">
+<img class="auto-refresh" src="{{url_for('static', filename='uv.png')}}">
 <br>
-<img id="img5" src="{{url_for('static', filename='wind.png')}}">
+<img class="auto-refresh" src="{{url_for('static', filename='wind.png')}}">
 <br>
-<img id="img6" src="{{url_for('static', filename='gas.png')}}">
+<img class="auto-refresh" src="{{url_for('static', filename='gas.png')}}">
 <br>
-<img id="img7" src="{{url_for('static', filename='pi.png')}}">
+<img class="auto-refresh" src="{{url_for('static', filename='pi.png')}}">
 
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
-    <script>
+<script>
         const socket = io();
-
         socket.on('new_images', function(data) {
             console.log("New images signal received");
-            const img1 = document.getElementById('img1');
-            const img2 = document.getElementById('img2');
-            const img3 = document.getElementById('img3');
-            const img4 = document.getElementById('img4');
-            const img5 = document.getElementById('img5');
-            const img6 = document.getElementById('img6');
-            const img7 = document.getElementById('img7');
             const timestamp = new Date().getTime(); // bust cache
-            const basePath = "{{ url_for('static', filename='') }}";
-            img1.src = `${basePath}temperatures.png?t=${timestamp}`;
-            img2.src = `${basePath}humidities.png?t=${timestamp}`;
-            img3.src = `${basePath}pressures.png?t=${timestamp}`;
-            img4.src = `${basePath}uv.png?t=${timestamp}`;
-            img5.src = `${basePath}wind.png?t=${timestamp}`;
-            img6.src = `${basePath}gas.png?t=${timestamp}`;
-            img7.src = `${basePath}pi.png?t=${timestamp}`;
+            document.querySelectorAll('.auto-refresh').forEach((img) => {
+            const src = img.src.split('?')[0];
+            img.src = `${src}?t=${timestamp}`;
+            });
         });
-    </script>
+</script>
 
 </body>
 </html>
