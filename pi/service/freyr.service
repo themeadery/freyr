@@ -1,10 +1,10 @@
 [Unit]
-Description=Reefer Service
+Description=Freyr Service
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python /home/pi/reefer.py
+ExecStart=/usr/bin/python /home/pi/freyr.py
 User=pi
 Group=pi
 Restart=always

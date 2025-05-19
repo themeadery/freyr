@@ -17,10 +17,10 @@ interval = timedelta(seconds=interval) # Convert integer into proper time format
 
 # Set up logging
 logging.basicConfig(
-    handlers=[RotatingFileHandler('./log/reefer.log', maxBytes=4000000, backupCount=3)],
+    handlers=[RotatingFileHandler('./log/freyr.log', maxBytes=4000000, backupCount=3)],
     level=logging.INFO, # Set logging level. logging.WARNING = less info
     format='%(asctime)s - %(levelname)s - %(message)s')
-logging.warning("Starting reefer") # Throw something in the log on start just so I know everything is working
+logging.warning("Starting freyr") # Throw something in the log on start just so I know everything is working
 
 # Connect to SQLite db
 try:
@@ -560,4 +560,4 @@ if __name__ == "__main__":
     finally:
         logging.warning("Closing connection to SQLite database...")
         connection.close()
-        logging.warning("Exiting reefer")
+        logging.warning("Exiting freyr")
