@@ -29,15 +29,17 @@ body {
 
 <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
 <script>
-        const socket = io();
-        socket.on('new_images', function(data) {
-            console.log("New images signal received");
-            const timestamp = new Date().getTime(); // bust cache
-            document.querySelectorAll('.auto-refresh').forEach((img) => {
-            const src = img.src.split('?')[0];
-            img.src = `${src}?t=${timestamp}`;
-            });
+    const socket = io();
+    socket.on('new_images', () => {
+        console.log("New images notification received");
+        //console.log("Server message:", data.message);
+        const timestamp = new Date().getTime(); // bust cache
+        document.querySelectorAll('.auto-refresh').forEach((img) => {
+        const src = img.src.split('?')[0];
+        img.src = `${src}?t=${timestamp}`;
         });
+        console.log("Images refreshed");
+    });
 </script>
 
 </body>

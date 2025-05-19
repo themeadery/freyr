@@ -72,8 +72,9 @@ def api():
 # Inter-process communication with 'freyr.py'
 @app.route('/notify', methods=['POST'])
 def notify():
-    socketio.emit('new_images', {'message': 'refresh'}) # Will trigger images in page to refresh
-    logging.info("Received notification to refresh images.")
+    logging.info("Received notification of new images.")
+    socketio.emit('new_images') # Will trigger images in page to refresh
+    logging.info("Emitted notification to browser to refresh images.")
     return 'Notified clients', 200
 
 if __name__ == '__main__':
