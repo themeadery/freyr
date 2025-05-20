@@ -20,7 +20,7 @@ interval = timedelta(seconds=interval) # Convert integer into proper time format
 # Set up logging
 logging.basicConfig(
     handlers=[RotatingFileHandler('./log/freyr.log', maxBytes=4000000, backupCount=3)],
-    level=logging.INFO, # Set logging level. logging.WARNING = less info
+    level=logging.DEBUG, # Set logging level. logging.WARNING = less info , logging.DEBUG = more info
     format='%(asctime)s - %(levelname)s - %(message)s')
 logging.warning("Starting freyr") # Throw something in the log on start just so I know everything is working
 
@@ -214,6 +214,24 @@ def get_indoor():
         temp_c = hum = dew = press = gas = 'U' # Set all variables to NaN if sensor data fails
         logging.error("Sensor is not ready or not heat_stable. No sensor data available. All vars set to 'U'")
         return temp_c, hum, dew, press, gas
+
+def throwaway(indoor_press):
+    logging.info("Throwing away first pressure reading")
+    logging.debug(f"Current garbage pressure reading: {indoor_press}")
+    # Use SQLite database to pull last known good value
+    r = None # Prevent crash when trying to access r in if statement below if db not connected
+    try:
+        r = cursor.execute("SELECT localPressure FROM data ORDER BY time DESC LIMIT 1").fetchone()
+        logging.debug(f"Raw result from SQLite: {r}")
+    except sqlite3.Error as e:
+        logging.error(f"Error reading SQLite database: {e}")
+    if r:
+        indoor_press = r[0]
+        logging.info(f"Updating pressure with last known good value: {indoor_press}")
+        update_rrd("./rrd/pressures.rrd", f"N:{indoor_press}")
+    else:
+        indoor_press = 1000.00
+        update_rrd("./rrd/pressures.rrd", f"N:{indoor_press}")
 
 # Pi Zero W Temperature function
 def pi_temp():
@@ -544,22 +562,18 @@ def main():
     while True: # main while loop that should run forever
         started = datetime.now() # Start timing the operation
         logging.info("~~~~~~~~~~~~~~new cycle~~~~~~~~~~~~~~~~") # Start logging cycle with a row of tildes to differentiate
-
         outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c = get_outdoor()
         indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
         pi_temp_c = pi_temp()
         logging.info("Updating RRD databases...")
         update_rrd("./rrd/temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
         update_rrd("./rrd/humidities.rrd", f"N:{outdoor_hum}:{indoor_hum}")
-        #update_rrd("./rrd/pressures.rrd", f"N:{indoor_press}")
         update_rrd("./rrd/gas.rrd", f"N:{indoor_gas}")
 
         # Throw away first pressure reading, because it is always garbage
         # despite attempts in the beginning of this file to solve this
         if loop_counter == 0:
-            logging.info("Throwing away first pressure reading")
-            indoor_press = 'U'
-            update_rrd("./rrd/pressures.rrd", f"N:{indoor_press}")
+            throwaway(indoor_press)
         else:
             update_rrd("./rrd/pressures.rrd", f"N:{indoor_press}")
 
@@ -567,22 +581,15 @@ def main():
         if loop_counter % 30 == 0:
             outdoorUV = get_OpenUV_Index()
             update_rrd("./rrd/uv.rrd", f"N:{outdoorUV}")
-
         # Only update wind every 2 loops/minutes because of API rate limits
         if loop_counter % 2 == 0:
             outdoor_wind, outdoor_windGust = get_OWM()
             update_rrd("./rrd/wind.rrd", f"N:{outdoor_wind}:{outdoor_windGust}")
-
         loop_counter += 1  # Increment loop counter
-
-        # Update SQLite database
         update_sqlite_database(started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press)
-
         logging.info("Done updating databases")
         create_graphs()
-
-        # Notify Flask server
-        notify_flask()
+        notify_flask() # Notify Flask server
 
         ended = datetime.now() # Stop timing the operation
         loop_time = (ended - started).seconds

@@ -68,7 +68,7 @@ I2C and 1-Wire interfaces must be turned on in ```$ sudo raspi-config```
 ```bash
 rrdtool create temperatures.rrd --step 60 DS:outdoor:GAUGE:120:-20:55 DS:indoor:GAUGE:120:0:55 DS:tank:GAUGE:120:0:55 DS:pi:GAUGE:120:0:100 DS:picow:GAUGE:120:0:100 DS:outdoor_dew:GAUGE:120:-80:55 DS:indoor_dew:GAUGE:120:-80:55 RRA:LAST:0.5:1:2880
 rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:GAUGE:120:0:100 RRA:LAST:0.5:1:2880
-rrdtool create pressures.rrd --step 60 DS:indoor:GAUGE:120:800:1100 RRA:LAST:0.5:1:2880
+rrdtool create pressures.rrd --step 60 DS:indoor:GAUGE:120:900:1100 RRA:LAST:0:1:2880  # try xff of 0 to fix bug
 rrdtool create gas.rrd --step 60 DS:indoor:GAUGE:120:50:200000 RRA:LAST:0.5:1:2880
 rrdtool create uv.rrd --step 1800 DS:outdoor:GAUGE:3600:0:20 RRA:LAST:0.5:1:2880
 rrdtool create wind.rrd --step 120 DS:outdoor_wind:GAUGE:240:0:100 DS:outdoor_windGust:GAUGE:240:0:100 RRA:LAST:0.5:1:2880

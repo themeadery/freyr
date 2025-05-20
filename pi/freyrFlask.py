@@ -14,7 +14,7 @@ logging.basicConfig(
     handlers=[RotatingFileHandler('./log/freyrFlask.log', maxBytes=4000000, backupCount=3)],
     level=logging.DEBUG, # Set logging level. logging.WARNING = less info
     format='%(asctime)s - %(levelname)s - %(message)s')
-logging.warning("Starting API") # Throw something in the log on start just so I know everything is working
+logging.warning("Starting freyrFlask") # Throw something in the log on start just so I know everything is working
 
 def read_sqlite_database():
     # Connect to SQLite db
@@ -36,7 +36,6 @@ def read_sqlite_database():
         logging.error(f"Error reading SQLite database: {e}")
         return jsonify({"error": "Error reading database"}), 500
     finally:
-        cursor.close()
         connection.close()
         logging.info(f"SQLite database {database} closed.")
     # Final error check and return JSON
