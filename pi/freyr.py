@@ -26,7 +26,7 @@ logging.warning("Starting freyr") # Throw something in the log on start just so 
 
 # Connect to SQLite db
 try:
-    database = "freyr.db"
+    database = "./sql/freyr.db"
     logging.info(f"Connecting to SQLite database: {database}")
     connection = sqlite3.connect(database)
     cursor = connection.cursor()

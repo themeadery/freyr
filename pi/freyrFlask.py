@@ -19,7 +19,7 @@ logging.warning("Starting API") # Throw something in the log on start just so I 
 def read_sqlite_database():
     # Connect to SQLite db
     try:
-        database = "freyr.db"
+        database = "./sql/freyr.db"
         logging.info(f"Connecting to SQLite database: {database}")
         connection = sqlite3.connect(database)
         cursor = connection.cursor()
