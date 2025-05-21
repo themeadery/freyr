@@ -29,7 +29,7 @@ def read_sqlite_database():
     # Read from SQLite db
     try:
         logging.info(f"Reading from SQLite database: {database}")
-        result = cursor.execute("SELECT * FROM data ORDER BY time DESC LIMIT 1").fetchone()
+        result = cursor.execute("SELECT * FROM data ORDER BY rowid DESC LIMIT 1").fetchone()
         logging.info(f"SQLite database {database} read successfully.")
         logging.debug(f"Data: {result}")
     except sqlite3.Error as e:
@@ -43,13 +43,20 @@ def read_sqlite_database():
         logging.debug("JSON served successfully.")
         return jsonify({
             "time": result[0],
-            "outdoorTemp": result[1],
-            "outdoorDewpoint": result[2],
-            "outdoorHumidity": result[3],
-            "indoorTemp": result[4],
-            "indoorDewpoint": result[5],
-            "indoorHumidity": result[6],
-            "localPressure": result[7]
+            "epoch": result[1],
+            "outdoorTemp": result[2],
+            "outdoorDewpoint": result[3],
+            "outdoorHumidity": result[4],
+            "indoorTemp": result[5],
+            "indoorDewpoint": result[6],
+            "indoorHumidity": result[7],
+            "localPressure": result[8],
+            "uv": result[9],
+            "wind": result[10],
+            "windGust": result[11],
+            "indoorGas": result[12],
+            "piTemp": result[13],
+            "picowTemp": result[14]
         })
     else:
         logging.error("No data found in SQLite database.")
@@ -77,4 +84,4 @@ def notify():
     return 'Notified clients', 200
 
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, debug=True, allow_unsafe_werkzeug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=False, allow_unsafe_werkzeug=True)

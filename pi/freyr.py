@@ -113,7 +113,7 @@ def get_outdoor():
     try:
         offset = 1.0 # Sensor correction in degrees C
         # Initialize variables so if request fails graphs still populate with NaN
-        outdoor_c = outdoor_hum = outdoor_dew = picow_temp_c ='U'
+        outdoor_c = outdoor_hum = outdoor_dew = picow_temp_c = 'U'
         responseSatellite = sessionSatellite.get('http://192.168.0.5', timeout=10) # Don't use HTTPS
         responseSatellite.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
@@ -235,9 +235,13 @@ def throwaway(indoor_press):
 
 # Pi Zero W Temperature function
 def pi_temp():
-    temp_c = vcgencmd.measure_temp()
-    temp_f = c_to_f(temp_c)
-    logging.info(f"Pi Zero W: {temp_c:.2f} °C | {temp_f:.2f} °F")
+    temp_c = 'U'
+    try:
+        temp_c = vcgencmd.measure_temp()
+        temp_f = c_to_f(temp_c)
+        logging.info(f"Pi Zero W: {temp_c:.2f} °C | {temp_f:.2f} °F")
+    except Exception as e:
+        logging.error(f"Failed to read Pi temperature: {e}")
     return temp_c
 
 # Update RRD databases function
@@ -512,12 +516,14 @@ def create_graphs():
     logging.info("Done creating graphs")
 
 # Updates the SQLite database with the provided data
-def update_sqlite_database(started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press):
+def update_sqlite_database(started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c):
     try:
         logging.info(f"Updating SQLite database: {database}")
+        epoch = round(started.timestamp()) # convert datetime to unix epoch time before INSERT, instead of during INSERT, in the SCHEMA or in SELECT later on
+        logging.debug(f"Epoch time: {epoch}")
         cursor.execute(
-            "INSERT INTO data VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press)
+            "INSERT INTO data VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
         )
         connection.commit()
         logging.info(f"SQLite database {database} updated successfully.")
@@ -558,7 +564,7 @@ def graceful_exit(signal_number, stack_frame):
 # previously the Python app would crash with an error to stderr, but because it is run as a service I could not see/log those errors
 def main():
     logging.info("Starting main while loop")
-    loop_counter = 0  # Add a counter to track number of loops
+    loop_counter = 0
     while True: # main while loop that should run forever
         started = datetime.now() # Start timing the operation
         logging.info("~~~~~~~~~~~~~~new cycle~~~~~~~~~~~~~~~~") # Start logging cycle with a row of tildes to differentiate
@@ -586,7 +592,7 @@ def main():
             outdoor_wind, outdoor_windGust = get_OWM()
             update_rrd("./rrd/wind.rrd", f"N:{outdoor_wind}:{outdoor_windGust}")
         loop_counter += 1  # Increment loop counter
-        update_sqlite_database(started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press)
+        update_sqlite_database(started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
         logging.info("Done updating databases")
         create_graphs()
         notify_flask() # Notify Flask server
