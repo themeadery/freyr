@@ -13,6 +13,7 @@ import sqlite3
 import signal
 import sys
 
+#region
 # Loop parameters
 interval = 60 # in seconds
 interval = timedelta(seconds=interval) # Convert integer into proper time format
@@ -88,6 +89,7 @@ for _ in range(2): # Loop iterates 2 times using a throwaway variable "_"
 offset = -0.4 # Temperature offset in deg C. Slight compensation for heating from components on PCB, wires to sensor, etc.
 sensor.set_temp_offset(offset)
 # Done initializing BME680
+#endregion
 
 # Global Celsius to Fahrenheit conversion function
 def c_to_f(temp_c):
@@ -262,8 +264,8 @@ def create_graphs():
 
     # Reduce duplicate lines of code
     common_args = [
-        "--end", "now", "--start", "end-2000m", "--step", "120",
-        "--width", "1000",
+        "--end", "now", "--start", "end-2880m", "--step", "120",
+        "--width", "1440",
         "--font", "DEFAULT:10:",
         "--font", "AXIS:8:",
         "--x-grid","MINUTE:30:HOUR:1:HOUR:2:0:%H:00",
