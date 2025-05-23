@@ -217,7 +217,7 @@ def get_indoor():
         logging.error("Sensor is not ready or not heat_stable. No sensor data available. All vars set to 'U'")
         return temp_c, hum, dew, press, gas
 
-def throwaway(indoor_press):
+def throwaway(alignedEpoch, indoor_press):
     logging.info("Throwing away first pressure reading")
     logging.debug(f"Current garbage pressure reading: {indoor_press}")
     # Use SQLite database to pull last known good value
@@ -225,15 +225,15 @@ def throwaway(indoor_press):
     try:
         r = cursor.execute("SELECT localPressure FROM data ORDER BY time DESC LIMIT 1").fetchone()
         logging.debug(f"Raw result from SQLite: {r}")
+        if r:
+            indoor_press = r[0]
+            logging.info(f"Updating pressure with last known good value: {indoor_press}")
+            update_rrd("./rrd/pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
+        else:
+            indoor_press = 1000.00
+            update_rrd("./rrd/pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
     except sqlite3.Error as e:
         logging.error(f"Error reading SQLite database: {e}")
-    if r:
-        indoor_press = r[0]
-        logging.info(f"Updating pressure with last known good value: {indoor_press}")
-        update_rrd("./rrd/pressures.rrd", f"N:{indoor_press}")
-    else:
-        indoor_press = 1000.00
-        update_rrd("./rrd/pressures.rrd", f"N:{indoor_press}")
 
 # Pi Zero W Temperature function
 def pi_temp():
@@ -247,16 +247,20 @@ def pi_temp():
     return temp_c
 
 # Update RRD databases function
-def update_rrd(rrd_filename, values_string):
+def update_rrd(rrd_filename, alignedEpoch, values_string):
     logging.info(f"Updating {rrd_filename}...")
     try:
-        result = rrdtool.updatev(rrd_filename, values_string)
+        last_update = rrdtool.last(rrd_filename)
+        if alignedEpoch > last_update:
+            result = rrdtool.updatev(rrd_filename, values_string)
+            logging.info(f"Success! Result: {result}")
+            logging.info(f"Updated {rrd_filename} with values {values_string}") #Show what went into the RRD
+        else:
+            logging.warning(f"Skipped update for {rrd_filename}: timestamp {alignedEpoch} <= last update {last_update}")
+            return
     except (rrdtool.ProgrammingError, rrdtool.OperationalError) as err:
         logging.error(f"Error updating {rrd_filename}: {err}")
         logging.error(f"Fail! Result: {result}")
-    else:
-        logging.info(f"Success! Result: {result}")
-        logging.info(f"Updated {rrd_filename} with values {values_string}") #Show what went into the RRD
 
 # RRDtool graphing function
 def create_graphs():
@@ -518,10 +522,10 @@ def create_graphs():
     logging.info("Done creating graphs")
 
 # Updates the SQLite database with the provided data
-def update_sqlite_database(started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c):
+def update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c):
     try:
         logging.info(f"Updating SQLite database: {database}")
-        epoch = round(started.timestamp()) # convert datetime to unix epoch time before INSERT, instead of during INSERT, in the SCHEMA or in SELECT later on
+        #epoch = round(started.timestamp()) # convert datetime to unix epoch time before INSERT, instead of during INSERT, in the SCHEMA or in SELECT later on
         logging.debug(f"Epoch time: {epoch}")
         cursor.execute(
             "INSERT INTO data VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -570,31 +574,40 @@ def main():
     while True: # main while loop that should run forever
         started = datetime.now() # Start timing the operation
         logging.info("~~~~~~~~~~~~~~new cycle~~~~~~~~~~~~~~~~") # Start logging cycle with a row of tildes to differentiate
+        logging.debug(f"Loop started at {started}")
+        epoch = int(started.timestamp()) # truncate with int() instead of round() for time-alignment below
+        logging.debug(f"Epoch time: {epoch}")
+        alignedEpoch = epoch - (epoch % 60) # Align to 60 second intervals
+        logging.debug(f"60 second aligned epoch time: {alignedEpoch}")
         outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c = get_outdoor()
         indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
         pi_temp_c = pi_temp()
         logging.info("Updating RRD databases...")
-        update_rrd("./rrd/temperatures.rrd", f"N:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
-        update_rrd("./rrd/humidities.rrd", f"N:{outdoor_hum}:{indoor_hum}")
-        update_rrd("./rrd/gas.rrd", f"N:{indoor_gas}")
+        update_rrd("./rrd/temperatures.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
+        update_rrd("./rrd/humidities.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_hum}:{indoor_hum}")
+        update_rrd("./rrd/gas.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_gas}")
 
         # Throw away first pressure reading, because it is always garbage
         # despite attempts in the beginning of this file to solve this
         if loop_counter == 0:
-            throwaway(indoor_press)
+            throwaway(alignedEpoch, indoor_press)
         else:
-            update_rrd("./rrd/pressures.rrd", f"N:{indoor_press}")
+            update_rrd("./rrd/pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
 
         # Only update UV every 30 loops/minutes because of API rate limits
         if loop_counter % 30 == 0:
+            alignedEpoch = epoch - (epoch % 1800)  # 30-minute alignment for UV
+            logging.debug(f"30 minute aligned epoch time: {alignedEpoch}")
             outdoorUV = get_OpenUV_Index()
-            update_rrd("./rrd/uv.rrd", f"N:{outdoorUV}")
+            update_rrd("./rrd/uv.rrd", alignedEpoch, f"{alignedEpoch}:{outdoorUV}")
         # Only update wind every 2 loops/minutes because of API rate limits
         if loop_counter % 2 == 0:
+            alignedEpoch = epoch - (epoch % 120)  # 2-minute alignment for wind
+            logging.debug(f"2 minute aligned epoch time: {alignedEpoch}")
             outdoor_wind, outdoor_windGust = get_OWM()
-            update_rrd("./rrd/wind.rrd", f"N:{outdoor_wind}:{outdoor_windGust}")
+            update_rrd("./rrd/wind.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_wind}:{outdoor_windGust}")
         loop_counter += 1  # Increment loop counter
-        update_sqlite_database(started, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
+        update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
         logging.info("Done updating databases")
         create_graphs()
         notify_flask() # Notify Flask server
