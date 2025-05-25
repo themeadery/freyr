@@ -1,6 +1,5 @@
 import time
-from datetime import datetime
-from datetime import timedelta
+from datetime import datetime, timedelta
 import config
 import bme680
 import requests
@@ -216,24 +215,6 @@ def get_indoor():
         temp_c = hum = dew = press = gas = 'U' # Set all variables to NaN if sensor data fails
         logging.error("Sensor is not ready or not heat_stable. No sensor data available. All vars set to 'U'")
         return temp_c, hum, dew, press, gas
-
-def throwaway(alignedEpoch, indoor_press):
-    logging.info("Throwing away first pressure reading")
-    logging.debug(f"Current garbage pressure reading: {indoor_press}")
-    # Use SQLite database to pull last known good value
-    r = None # Prevent crash when trying to access r in if statement below if db not connected
-    try:
-        r = cursor.execute("SELECT localPressure FROM data ORDER BY time DESC LIMIT 1").fetchone()
-        logging.debug(f"Raw result from SQLite: {r}")
-        if r:
-            indoor_press = r[0]
-            logging.info(f"Updating pressure with last known good value: {indoor_press}")
-            update_rrd("./rrd/pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
-        else:
-            indoor_press = 1000.00
-            update_rrd("./rrd/pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
-    except sqlite3.Error as e:
-        logging.error(f"Error reading SQLite database: {e}")
 
 # Pi Zero W Temperature function
 def pi_temp():
@@ -589,10 +570,11 @@ def main():
 
         # Throw away first pressure reading, because it is always garbage
         # despite attempts in the beginning of this file to solve this
-        if loop_counter == 0:
+        """if loop_counter == 0:
             throwaway(alignedEpoch, indoor_press)
         else:
-            update_rrd("./rrd/pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
+            update_rrd("./rrd/pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")"""
+        update_rrd("./rrd/pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}") # code above is potentially deprecated
 
         # Only update UV every 30 loops/minutes because of API rate limits
         if loop_counter % 30 == 0:
