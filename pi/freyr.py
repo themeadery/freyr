@@ -37,6 +37,7 @@ except Exception as e:
 sta_alt = config.STA_ALT
 
 # API query definitions
+urlSatellite = "http://brokkr" # Pi Pico W + Si7021 sensor API, don't use HTTPS
 # OpenWeatherMap API
 urlOWM = "https://api.openweathermap.org/data/3.0/onecall"
 paramsOWM = {
@@ -57,9 +58,10 @@ paramsOpenUV = {
 }
 
 # Initialize HTTP(S) request sessions for reuse during API calls
-sessionOWM = requests.Session() # OpenWeatherMap API
+#sessionOWM = requests.Session() # OpenWeatherMap API
+#sessionSatellite = requests.Session() # Pi Pico W + si7021 sensor API
+# above are useless because timeout is too short, so just use requests.get() directly
 sessionOpenUV = requests.Session()
-sessionSatellite = requests.Session() # Pi Pico W + si7021 sensor API
 
 # Initialize BME680
 try:
@@ -115,7 +117,7 @@ def get_outdoor():
         offset = 1.0 # Sensor correction in degrees C
         # Initialize variables so if request fails graphs still populate with NaN
         outdoor_c = outdoor_hum = outdoor_dew = picow_temp_c = 'U'
-        responseSatellite = sessionSatellite.get('http://192.168.0.5', timeout=10) # Don't use HTTPS
+        responseSatellite = requests.get(urlSatellite, timeout=5)
         responseSatellite.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
         outdoor_c = responseSatellite.json()['temperature'] + offset
@@ -143,7 +145,7 @@ def get_OpenUV_Index():
     logging.info("Fetching data from OpenUV:")
     try:
         uv = 'U' # Set to rrdtool's definition of NaN if request fails
-        responseOpenUV = sessionOpenUV.get(urlOpenUV, headers=headersOpenUV, params=paramsOpenUV, timeout=10)
+        responseOpenUV = sessionOpenUV.get(urlOpenUV, headers=headersOpenUV, params=paramsOpenUV, timeout=5)
         responseOpenUV.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
         uv = responseOpenUV.json()['result']['uv']
@@ -163,7 +165,7 @@ def get_OWM():
     logging.info("Fetching data from OpenWeatherMap:")
     wind = windGust = 'U' # Set to rrdtool's definition of NaN if request fails
     try:
-        responseOWM = sessionOWM.get(urlOWM, params=paramsOWM, timeout=10)
+        responseOWM = requests.get(urlOWM, params=paramsOWM, timeout=5)
         responseOWM.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
         current_data = responseOWM.json().get('current', {}) # take the 'current' key values and throw them in 'current_data' 
