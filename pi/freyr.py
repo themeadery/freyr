@@ -13,36 +13,28 @@ import signal
 import sys
 
 def init():
-    global interval, database, connection, cursor, sta_alt
-    global urlSatellite, urlOWM, paramsOWM, urlOpenUV, headersOpenUV, paramsOpenUV, sessionOpenUV
+    global connection, cursor
+    global urlOWM, paramsOWM, urlOpenUV, headersOpenUV, paramsOpenUV, sessionOpenUV
     global sensor
-
-    # Loop parameters
-    interval = 60 # in seconds
-    interval = timedelta(seconds=interval) # Convert integer into proper time format
 
     # Set up logging
     logging.basicConfig(
-        handlers=[RotatingFileHandler('./log/freyr.log', maxBytes=4000000, backupCount=3)],
+        handlers=[RotatingFileHandler(config.LOG_PATH + config.LOG_FILE, maxBytes=4000000, backupCount=3)],
         level=logging.DEBUG, # Set logging level. logging.WARNING = less info , logging.DEBUG = more info
         format='%(asctime)s - %(levelname)s - %(message)s')
     logging.warning("Starting freyr") # Throw something in the log on start just so I know everything is working
 
     # Connect to SQLite db
     try:
-        database = "./sql/freyr.db"
-        logging.info(f"Connecting to SQLite database: {database}")
-        connection = sqlite3.connect(database)
+        logging.info(f"Connecting to SQLite database")
+        connection = sqlite3.connect(config.DATABASE_PATH + config.DATABASE)
         cursor = connection.cursor()
     except Exception as e:
-        logging.error(f"Couldn't open SQLite database {database}: {e}")
-
-    # Station altitude in meters
-    sta_alt = config.STA_ALT
+        logging.error(f"Couldn't open SQLite database: {e}")
 
     # API query definitions
     # throw this all in config.py?
-    urlSatellite = "http://brokkr" # Pi Pico W + Si7021 sensor API, don't use HTTPS
+    #urlSatellite = config.SATELLITE # Pi Pico W + Si7021 sensor API, don't use HTTPS
     # OpenWeatherMap API
     urlOWM = "https://api.openweathermap.org/data/3.0/onecall"
     paramsOWM = {
@@ -58,7 +50,7 @@ def init():
     paramsOpenUV = {
         "lat": config.LAT,
         "lng": config.LON,
-        "alt": sta_alt,
+        "alt": config.STA_ALT,
         "dt": ""  # If you want to specify a datetime, you can put it here
     }
 
@@ -94,7 +86,6 @@ def init():
     offset = -0.4 # Temperature offset in deg C. Slight compensation for heating from components on PCB, wires to sensor, etc.
     sensor.set_temp_offset(offset)
     # Done initializing BME680
-    #endregion
 
 # Global Celsius to Fahrenheit conversion function
 def c_to_f(temp_c):
@@ -103,7 +94,7 @@ def c_to_f(temp_c):
 # Station pressure to MSL Pressure conversion function
 # Formula source: https://gist.github.com/cubapp/23dd4e91814a995b8ff06f406679abcf
 def sta_press_to_mslp(sta_press, temp_c):
-    mslp = sta_press + ((sta_press * 9.80665 * sta_alt)/(287 * (273 + temp_c + (sta_alt/400))))
+    mslp = sta_press + ((sta_press * 9.80665 * config.STA_ALT)/(287 * (273 + temp_c + (config.STA_ALT/400))))
     return mslp
 
 # Dewpoint calculation function
@@ -121,7 +112,7 @@ def get_outdoor():
         offset = 1.0 # Sensor correction in degrees C
         # Initialize variables so if request fails graphs still populate with NaN
         outdoor_c = outdoor_hum = outdoor_dew = picow_temp_c = 'U'
-        responseSatellite = requests.get(urlSatellite, timeout=5)
+        responseSatellite = requests.get(config.SATELLITE, timeout=5)
         responseSatellite.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
         outdoor_c = responseSatellite.json()['temperature'] + offset
@@ -225,13 +216,12 @@ def pi_temp():
         logging.error(f"Failed to read Pi temperature: {e}")
     return temp_c
 
-# Update RRD databases function
 def update_rrd(rrd_filename, alignedEpoch, values_string):
     logging.info(f"Updating {rrd_filename}...")
     try:
-        last_update = rrdtool.last(rrd_filename)
+        last_update = rrdtool.last(config.RRD_PATH + rrd_filename)
         if alignedEpoch > last_update:
-            result = rrdtool.updatev(rrd_filename, values_string)
+            result = rrdtool.updatev(config.RRD_PATH + rrd_filename, values_string)
             logging.debug(f"Full result from rrdtool.updatev: {result}")
             logging.info(f"Success! Updated {rrd_filename} with values {values_string}") #Show what went into the RRD
         else:
@@ -241,7 +231,6 @@ def update_rrd(rrd_filename, alignedEpoch, values_string):
         logging.error(f"Error updating {rrd_filename}: {err}")
         logging.error(f"Fail! Result: {result}")
 
-# RRDtool graphing function
 def create_graphs():
     logging.info("Creating graphs...")
 
@@ -503,7 +492,7 @@ def create_graphs():
 # Updates the SQLite database with the provided data
 def update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c):
     try:
-        logging.info(f"Updating SQLite database: {database}")
+        logging.info(f"Updating SQLite database")
         #epoch = round(started.timestamp()) # convert datetime to unix epoch time before INSERT, instead of during INSERT, in the SCHEMA or in SELECT later on
         logging.debug(f"Epoch time: {epoch}")
         cursor.execute(
@@ -511,7 +500,7 @@ def update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, 
             (started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
         )
         connection.commit()
-        logging.info(f"SQLite database {database} updated successfully.")
+        logging.info(f"SQLite database updated successfully.")
     except sqlite3.Error as e:
         logging.error(f"Error updating SQLite database: {e}")
 
@@ -540,7 +529,7 @@ def graceful_exit(signal_number, stack_frame):
     # Close the SQLite connection
     if connection:
         connection.close()
-        logging.warning(f"Closed connection to SQLite database: {database}")
+        logging.warning(f"Closed connection to SQLite database")
     logging.warning("Exiting freyr...")
     sys.exit(0)
 
@@ -549,6 +538,9 @@ def graceful_exit(signal_number, stack_frame):
 # previously the Python app would crash with an error to stderr, but because it is run as a service I could not see/log those errors
 def main():
     logging.info("Starting main while loop")
+    # Loop parameters
+    interval = config.LOOP_INTERVAL
+    interval = timedelta(seconds=interval) # Convert integer into proper time format
     loop_counter = 0
     while True: # main while loop that should run forever
         started = datetime.now() # Start timing the operation
@@ -562,23 +554,23 @@ def main():
         indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
         pi_temp_c = pi_temp()
         logging.info("Updating RRD databases...")
-        update_rrd("./rrd/temperatures.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
-        update_rrd("./rrd/humidities.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_hum}:{indoor_hum}")
-        update_rrd("./rrd/gas.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_gas}")
-        update_rrd("./rrd/pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
+        update_rrd("temperatures.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
+        update_rrd("humidities.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_hum}:{indoor_hum}")
+        update_rrd("gas.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_gas}")
+        update_rrd("pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
 
         # Only update UV every 30 loops/minutes because of API rate limits
         if loop_counter % 30 == 0:
             alignedEpoch = epoch - (epoch % 1800)  # 30-minute alignment for UV
             logging.debug(f"30 minute aligned epoch time: {alignedEpoch}")
             outdoorUV = get_OpenUV_Index()
-            update_rrd("./rrd/uv.rrd", alignedEpoch, f"{alignedEpoch}:{outdoorUV}")
+            update_rrd("uv.rrd", alignedEpoch, f"{alignedEpoch}:{outdoorUV}")
         # Only update wind every 2 loops/minutes because of API rate limits
         if loop_counter % 2 == 0:
             alignedEpoch = epoch - (epoch % 120)  # 2-minute alignment for wind
             logging.debug(f"2 minute aligned epoch time: {alignedEpoch}")
             outdoor_wind, outdoor_windGust = get_OWM()
-            update_rrd("./rrd/wind.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_wind}:{outdoor_windGust}")
+            update_rrd("wind.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_wind}:{outdoor_windGust}")
         loop_counter += 1  # Increment loop counter
         update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
         logging.info("Done updating databases")
