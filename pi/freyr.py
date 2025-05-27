@@ -12,85 +12,89 @@ import sqlite3
 import signal
 import sys
 
-#region
-# Loop parameters
-interval = 60 # in seconds
-interval = timedelta(seconds=interval) # Convert integer into proper time format
+def init():
+    global interval, database, connection, cursor, sta_alt
+    global urlSatellite, urlOWM, paramsOWM, urlOpenUV, headersOpenUV, paramsOpenUV, sessionOpenUV
+    global sensor
 
-# Set up logging
-logging.basicConfig(
-    handlers=[RotatingFileHandler('./log/freyr.log', maxBytes=4000000, backupCount=3)],
-    level=logging.DEBUG, # Set logging level. logging.WARNING = less info , logging.DEBUG = more info
-    format='%(asctime)s - %(levelname)s - %(message)s')
-logging.warning("Starting freyr") # Throw something in the log on start just so I know everything is working
+    # Loop parameters
+    interval = 60 # in seconds
+    interval = timedelta(seconds=interval) # Convert integer into proper time format
 
-# Connect to SQLite db
-try:
-    database = "./sql/freyr.db"
-    logging.info(f"Connecting to SQLite database: {database}")
-    connection = sqlite3.connect(database)
-    cursor = connection.cursor()
-except Exception as e:
-    logging.error(f"Couldn't open SQLite database {database}: {e}")
+    # Set up logging
+    logging.basicConfig(
+        handlers=[RotatingFileHandler('./log/freyr.log', maxBytes=4000000, backupCount=3)],
+        level=logging.DEBUG, # Set logging level. logging.WARNING = less info , logging.DEBUG = more info
+        format='%(asctime)s - %(levelname)s - %(message)s')
+    logging.warning("Starting freyr") # Throw something in the log on start just so I know everything is working
 
-# Station altitude in meters
-sta_alt = config.STA_ALT
+    # Connect to SQLite db
+    try:
+        database = "./sql/freyr.db"
+        logging.info(f"Connecting to SQLite database: {database}")
+        connection = sqlite3.connect(database)
+        cursor = connection.cursor()
+    except Exception as e:
+        logging.error(f"Couldn't open SQLite database {database}: {e}")
 
-# API query definitions
-urlSatellite = "http://brokkr" # Pi Pico W + Si7021 sensor API, don't use HTTPS
-# OpenWeatherMap API
-urlOWM = "https://api.openweathermap.org/data/3.0/onecall"
-paramsOWM = {
-    "lat": config.LAT,
-    "lon": config.LON,
-    "exclude": "minutely,hourly,daily,alerts",
-    "units": "imperial",
-    "appid": config.OWMKEY
-}
-# OpenUV.io API
-urlOpenUV = "https://api.openuv.io/api/v1/uv"
-headersOpenUV = {"x-access-token": config.OPENUVKEY} # OpenUV.io API key
-paramsOpenUV = {
-    "lat": config.LAT,
-    "lng": config.LON,
-    "alt": sta_alt,
-    "dt": ""  # If you want to specify a datetime, you can put it here
-}
+    # Station altitude in meters
+    sta_alt = config.STA_ALT
 
-# Initialize HTTP(S) request sessions for reuse during API calls
-#sessionOWM = requests.Session() # OpenWeatherMap API
-#sessionSatellite = requests.Session() # Pi Pico W + si7021 sensor API
-# above are useless because timeout is too short, so just use requests.get() directly
-sessionOpenUV = requests.Session()
+    # API query definitions
+    # throw this all in config.py?
+    urlSatellite = "http://brokkr" # Pi Pico W + Si7021 sensor API, don't use HTTPS
+    # OpenWeatherMap API
+    urlOWM = "https://api.openweathermap.org/data/3.0/onecall"
+    paramsOWM = {
+        "lat": config.LAT,
+        "lon": config.LON,
+        "exclude": "minutely,hourly,daily,alerts",
+        "units": "imperial",
+        "appid": config.OWMKEY
+    }
+    # OpenUV.io API
+    urlOpenUV = "https://api.openuv.io/api/v1/uv"
+    headersOpenUV = {"x-access-token": config.OPENUVKEY} # OpenUV.io API key
+    paramsOpenUV = {
+        "lat": config.LAT,
+        "lng": config.LON,
+        "alt": sta_alt,
+        "dt": ""  # If you want to specify a datetime, you can put it here
+    }
 
-# Initialize BME680
-try:
-    sensor = bme680.BME680(bme680.I2C_ADDR_PRIMARY)
-except (RuntimeError, IOError):
-    sensor = bme680.BME680(bme680.I2C_ADDR_SECONDARY)
-# These oversampling settings can be tweaked to
-# change the balance between accuracy and noise in the data.
-sensor.set_humidity_oversample(bme680.OS_2X)
-sensor.set_pressure_oversample(bme680.OS_4X)
-sensor.set_temperature_oversample(bme680.OS_8X)
-sensor.set_filter(bme680.FILTER_SIZE_3)
-sensor.set_gas_status(bme680.ENABLE_GAS_MEAS)
-sensor.set_gas_heater_temperature(320) # 320 °C
-sensor.set_gas_heater_duration(150) # 150 ms
-sensor.select_gas_heater_profile(0) # Profile 1 of 10
+    # Initialize HTTP(S) request sessions for reuse during API calls
+    #sessionOWM = requests.Session() # OpenWeatherMap API
+    #sessionSatellite = requests.Session() # Pi Pico W + si7021 sensor API
+    # above are useless because timeout is too short, so just use requests.get() directly
+    sessionOpenUV = requests.Session()
 
-# BME680 must be read twice in order to fire up the heater and become heat_stable
-# Otherwise the data is garbage on the first call from the main loop
-warmup_time = 5  # in sec
-for _ in range(2): # Loop iterates 2 times using a throwaway variable "_"
-    logging.info(f"Warming up BME680 sensor for {warmup_time} seconds...")
-    sensor.get_sensor_data() # call function from bme680 module, but don't return anything, this fires up heater
-    time.sleep(warmup_time)
+    # Initialize BME680
+    try:
+        sensor = bme680.BME680(bme680.I2C_ADDR_PRIMARY)
+    except (RuntimeError, IOError):
+        sensor = bme680.BME680(bme680.I2C_ADDR_SECONDARY)
+    # These oversampling settings can be tweaked to
+    # change the balance between accuracy and noise in the data.
+    sensor.set_humidity_oversample(bme680.OS_2X)
+    sensor.set_pressure_oversample(bme680.OS_4X)
+    sensor.set_temperature_oversample(bme680.OS_8X)
+    sensor.set_filter(bme680.FILTER_SIZE_3)
+    sensor.set_gas_status(bme680.ENABLE_GAS_MEAS)
+    sensor.set_gas_heater_temperature(320) # 320 °C
+    sensor.set_gas_heater_duration(150) # 150 ms
+    sensor.select_gas_heater_profile(0) # Profile 1 of 10
 
-offset = -0.4 # Temperature offset in deg C. Slight compensation for heating from components on PCB, wires to sensor, etc.
-sensor.set_temp_offset(offset)
-# Done initializing BME680
-#endregion
+    # BME680 must be read twice in order to fire up the heater and become heat_stable
+    warmup_time = 5  # in sec
+    for _ in range(2): # Loop iterates 2 times using a throwaway variable "_"
+        logging.info(f"Warming up BME680 sensor for {warmup_time} seconds...")
+        sensor.get_sensor_data() # call function from bme680 module, but don't return anything, this fires up heater
+        time.sleep(warmup_time)
+
+    offset = -0.4 # Temperature offset in deg C. Slight compensation for heating from components on PCB, wires to sensor, etc.
+    sensor.set_temp_offset(offset)
+    # Done initializing BME680
+    #endregion
 
 # Global Celsius to Fahrenheit conversion function
 def c_to_f(temp_c):
@@ -204,14 +208,6 @@ def get_indoor():
         logging.info(f"Pressure: {press} hPa MSLP") # converted to MSLP
         gas = sensor.data.gas_resistance
         logging.info(f"Gas Resistance: {gas} Ω")
-
-        """if sensor.data.heat_stable:
-            gas = sensor.data.gas_resistance
-            logging.info(f"Gas Resistance: {gas} Ω")
-        else:
-            gas = 'U'
-            logging.warning("Sensor is not heat_stable. No data from gas sensor")"""
-
         return temp_c, hum, dew, press, gas
     else:
         temp_c = hum = dew = press = gas = 'U' # Set all variables to NaN if sensor data fails
@@ -236,8 +232,8 @@ def update_rrd(rrd_filename, alignedEpoch, values_string):
         last_update = rrdtool.last(rrd_filename)
         if alignedEpoch > last_update:
             result = rrdtool.updatev(rrd_filename, values_string)
-            logging.info(f"Success! Result: {result}")
-            logging.info(f"Updated {rrd_filename} with values {values_string}") #Show what went into the RRD
+            logging.debug(f"Full result from rrdtool.updatev: {result}")
+            logging.info(f"Success! Updated {rrd_filename} with values {values_string}") #Show what went into the RRD
         else:
             logging.warning(f"Skipped update for {rrd_filename}: timestamp {alignedEpoch} <= last update {last_update}")
             return
@@ -569,14 +565,7 @@ def main():
         update_rrd("./rrd/temperatures.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
         update_rrd("./rrd/humidities.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_hum}:{indoor_hum}")
         update_rrd("./rrd/gas.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_gas}")
-
-        # Throw away first pressure reading, because it is always garbage
-        # despite attempts in the beginning of this file to solve this
-        """if loop_counter == 0:
-            throwaway(alignedEpoch, indoor_press)
-        else:
-            update_rrd("./rrd/pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")"""
-        update_rrd("./rrd/pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}") # code above is potentially deprecated
+        update_rrd("./rrd/pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
 
         # Only update UV every 30 loops/minutes because of API rate limits
         if loop_counter % 30 == 0:
@@ -594,7 +583,7 @@ def main():
         update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
         logging.info("Done updating databases")
         create_graphs()
-        notify_flask() # Notify Flask server
+        notify_flask()
 
         ended = datetime.now() # Stop timing the operation
         loop_time = (ended - started).seconds
@@ -611,6 +600,7 @@ if __name__ == "__main__":
     try:
         signal.signal(signal.SIGINT, graceful_exit)
         signal.signal(signal.SIGTERM, graceful_exit)
+        init()
         main()
     except Exception as e:
         logging.exception(f"main crashed. Error: {e}")
