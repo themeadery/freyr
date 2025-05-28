@@ -164,7 +164,7 @@ I realize this is turning more into a glorified weather station app, but that's 
 - Add BME680 documentation
 - ~~Add Pi Pico W + Si7021 sattelite sensor code~~ and documentation
 - ~~Squash indoor/outdoor pressures to "local"~~
-- Output data to Wunderground
+- ~~Output data to Wunderground~~
 - ~~Break out more things in main loop to functions and use main loop for flow control only (aka refactoring?)~~
 - ~~Add High/Low stats~~
 - ~~Log rotation using logging.handlers.RotatingFileHandler~~
@@ -173,4 +173,3 @@ I realize this is turning more into a glorified weather station app, but that's 
 - ~~Break secrets out to external file (lat, lon, API key, etc)~~
 - ~~Fix readings from barometer and gas resistance sensor on first loop iteration~~
 - ~~Rename project to Freyr~~
-- Throw away first pressure reading

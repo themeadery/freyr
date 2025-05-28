@@ -182,6 +182,36 @@ def get_OWM():
         logging.error(err)
     return wind, windGust
 
+def post_WU(outdoor_c, outdoor_dew, outdoor_hum, indoor_press):
+    logging.info("Posting data to Weather Underground:")
+    outdoor_f = c_to_f(outdoor_c)
+    outdoor_dew_f = c_to_f(outdoor_dew)
+    pressure_in = indoor_press * 0.02953 # Convert hPa to inHg
+    urlWU = "http://weatherstation.wunderground.com/weatherstation/updateweatherstation.php"
+    paramsWU = {
+        "ID": config.WU_ID,
+        "PASSWORD": config.WU_KEY,
+        "dateutc": "now",  # or use datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S') if needed
+        "humidity": outdoor_hum,
+        "dewptf": outdoor_dew_f,
+        "tempf": outdoor_f,
+        "baromin": pressure_in,
+        "action": "updateraw"
+    }
+    try:
+        responseWU = requests.get(urlWU, params=paramsWU, timeout=5) # WU actually uses GET, not POST
+        logging.debug(f"Weather Underground request URL: {responseWU.url}") # Log the full URL with parameters
+        responseWU.raise_for_status() # If error, try to catch it in except clauses below
+        logging.info(f"Weather Underground response RAW: {responseWU}") # try to extract the response text after the HTTP 200 code
+    except requests.exceptions.HTTPError as errh:
+        logging.error(errh)
+    except requests.exceptions.ConnectionError as errc:
+        logging.error(errc)
+    except requests.exceptions.Timeout as errt:
+        logging.error(errt)
+    except requests.exceptions.RequestException as err:
+        logging.error(err)
+
 # Indoor BME680 function
 def get_indoor():
     logging.info("Indoor sensor data:")
@@ -522,7 +552,6 @@ def notify_flask():
     except Exception as e:
         logging.error(f"Failed to notify Flask: {e}")
 
-# Graceful exit function
 def graceful_exit(signal_number, stack_frame):
     signal_name = signal.Signals(signal_number).name
     logging.warning(f"Received signal {signal_name} to exit. Cleaning up...")
@@ -533,9 +562,6 @@ def graceful_exit(signal_number, stack_frame):
     logging.warning("Exiting freyr...")
     sys.exit(0)
 
-# Main Loop Function
-# nest this into a function def so that I can try/except below to catch errors if it crashes
-# previously the Python app would crash with an error to stderr, but because it is run as a service I could not see/log those errors
 def main():
     logging.info("Starting main while loop")
     # Loop parameters
@@ -553,7 +579,7 @@ def main():
         outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c = get_outdoor()
         indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
         pi_temp_c = pi_temp()
-        logging.info("Updating RRD databases...")
+        logging.info("Updating databases...")
         update_rrd("temperatures.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
         update_rrd("humidities.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_hum}:{indoor_hum}")
         update_rrd("gas.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_gas}")
@@ -573,6 +599,7 @@ def main():
             update_rrd("wind.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_wind}:{outdoor_windGust}")
         loop_counter += 1  # Increment loop counter
         update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
+        post_WU(outdoor_c, outdoor_dew, outdoor_hum, indoor_press) # Post to Weather Underground
         logging.info("Done updating databases")
         create_graphs()
         notify_flask()
