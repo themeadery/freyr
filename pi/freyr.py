@@ -575,6 +575,7 @@ def main():
         alignedEpoch = epoch - (epoch % 60) # Align to 60 second intervals
         logging.debug(f"60 second aligned epoch time: {alignedEpoch}")
         outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c = get_outdoor()
+        outdoor_wind, outdoor_windGust = get_OWM()
         indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
         pi_temp_c = pi_temp()
         logging.info("Updating databases...")
@@ -582,6 +583,7 @@ def main():
         update_rrd("humidities.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_hum}:{indoor_hum}")
         update_rrd("gas.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_gas}")
         update_rrd("pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
+        update_rrd("wind.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_wind}:{outdoor_windGust}")
 
         # Only update UV every 30 loops/minutes because of API rate limits
         if loop_counter % 30 == 0:
@@ -589,12 +591,7 @@ def main():
             logging.debug(f"30 minute aligned epoch time: {alignedEpoch}")
             outdoorUV = get_OpenUV_Index()
             update_rrd("uv.rrd", alignedEpoch, f"{alignedEpoch}:{outdoorUV}")
-        # Only update wind every 2 loops/minutes because of API rate limits
-        if loop_counter % 2 == 0:
-            alignedEpoch = epoch - (epoch % 120)  # 2-minute alignment for wind
-            logging.debug(f"2 minute aligned epoch time: {alignedEpoch}")
-            outdoor_wind, outdoor_windGust = get_OWM()
-            update_rrd("wind.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_wind}:{outdoor_windGust}")
+
         loop_counter += 1  # Increment loop counter
         update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
         post_WU(outdoor_c, outdoor_dew, outdoor_hum, indoor_press) # Post to Weather Underground
