@@ -198,9 +198,10 @@ def post_WU(outdoor_c, outdoor_dew, outdoor_hum, indoor_press):
     }
     try:
         responseWU = requests.get(urlWU, params=paramsWU, timeout=5) # WU actually uses GET, not POST
-        logging.debug(f"Weather Underground request URL: {responseWU.url}") # Log the full URL with parameters
         responseWU.raise_for_status() # If error, try to catch it in except clauses below
-        logging.info(f"Weather Underground response RAW: {responseWU}") # try to extract the response text after the HTTP 200 code
+        logging.debug(f"Weather Underground response RAW: {responseWU}")
+        logging.info(f"Weather Underground status code: {responseWU.status_code}")
+        logging.info(f"Weather Underground response text: {responseWU.text}")
     except requests.exceptions.HTTPError as errh:
         logging.error(errh)
     except requests.exceptions.ConnectionError as errc:
