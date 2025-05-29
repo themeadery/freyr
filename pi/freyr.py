@@ -14,7 +14,7 @@ import sys
 
 def init():
     global connection, cursor
-    global urlOWM, paramsOWM, urlOpenUV, headersOpenUV, paramsOpenUV, sessionOpenUV
+    global urlOpenUV, headersOpenUV, paramsOpenUV, sessionOpenUV
     global sensor
 
     # Set up logging
@@ -36,14 +36,6 @@ def init():
     # throw this all in config.py?
     #urlSatellite = config.SATELLITE # Pi Pico W + Si7021 sensor API, don't use HTTPS
     # OpenWeatherMap API
-    urlOWM = "https://api.openweathermap.org/data/3.0/onecall"
-    paramsOWM = {
-        "lat": config.LAT,
-        "lon": config.LON,
-        "exclude": "minutely,hourly,daily,alerts",
-        "units": "imperial",
-        "appid": config.OWMKEY
-    }
     # OpenUV.io API
     urlOpenUV = "https://api.openuv.io/api/v1/uv"
     headersOpenUV = {"x-access-token": config.OPENUVKEY} # OpenUV.io API key
@@ -158,15 +150,33 @@ def get_OpenUV_Index():
 
 def get_OWM():
     logging.info("Fetching data from OpenWeatherMap:")
-    wind = windGust = 'U' # Set to rrdtool's definition of NaN if request fails
+    #wind = windGust = 'U' # Set to rrdtool's definition of NaN if request fails
+    #urlOWM = "https://api.openweathermap.org/data/3.0/onecall"
+    urlOWM = "https://api.openweathermap.org/data/2.5/weather"
+    """paramsOWM = {
+        "lat": config.LAT,
+        "lon": config.LON,
+        "exclude": "minutely,hourly,daily,alerts",
+        "units": "imperial",
+        "appid": config.OWMKEY
+    }"""
+    paramsOWM = {
+        "lat": config.LAT,
+        "lon": config.LON,
+        "appid": config.OWMKEY,
+        "units": "imperial"
+    }
     try:
         responseOWM = requests.get(urlOWM, params=paramsOWM, timeout=5)
         responseOWM.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
-        current_data = responseOWM.json().get('current', {}) # take the 'current' key values and throw them in 'current_data' 
-        wind = current_data.get('wind_speed', 'U') # if 'wind_speed' key does not exist, fallback to 'U' which is rrdtool's def of NaN
-        windGust = current_data.get('wind_gust', 'U') # if 'wind_gust' key does not exist, fallback to 'U' which is rrdtool's def of NaN
-        logging.info(f"Wind: {wind} mph") # this kinda assume the 'wind' key exists
+        #current_data = responseOWM.json().get('current', {}) # take the 'current' key values and throw them in 'current_data'
+        w = responseOWM.json().get('wind', {}) # take the 'wind' key values and throw them in 'w'
+        #wind = current_data.get('wind_speed', 'U') # if 'wind_speed' key does not exist, fallback to 'U' which is rrdtool's def of NaN
+        wind = w.get('speed', 'U') # if 'wind_speed' key does not exist, fallback to 'U' which is rrdtool's def of NaN
+        #windGust = current_data.get('wind_gust', 'U') # if 'wind_gust' key does not exist, fallback to 'U' which is rrdtool's def of NaN
+        windGust = w.get('gust', 'U') # if 'wind_gust' key does not exist, fallback to 'U' which is rrdtool's def of NaN
+        logging.info(f"Wind: {wind} mph") # this kinda assume the key exists
         if windGust != 'U':
             logging.info(f"Wind Gust: {windGust} mph")
         else:
