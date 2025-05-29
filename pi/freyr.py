@@ -14,7 +14,6 @@ import sys
 
 def init():
     global connection, cursor
-    global urlOpenUV, headersOpenUV, paramsOpenUV, sessionOpenUV
     global sensor
 
     # Set up logging
@@ -31,26 +30,6 @@ def init():
         cursor = connection.cursor()
     except Exception as e:
         logging.error(f"Couldn't open SQLite database: {e}")
-
-    # API query definitions
-    # throw this all in config.py?
-    #urlSatellite = config.SATELLITE # Pi Pico W + Si7021 sensor API, don't use HTTPS
-    # OpenWeatherMap API
-    # OpenUV.io API
-    urlOpenUV = "https://api.openuv.io/api/v1/uv"
-    headersOpenUV = {"x-access-token": config.OPENUVKEY} # OpenUV.io API key
-    paramsOpenUV = {
-        "lat": config.LAT,
-        "lng": config.LON,
-        "alt": config.STA_ALT,
-        "dt": ""  # If you want to specify a datetime, you can put it here
-    }
-
-    # Initialize HTTP(S) request sessions for reuse during API calls
-    #sessionOWM = requests.Session() # OpenWeatherMap API
-    #sessionSatellite = requests.Session() # Pi Pico W + si7021 sensor API
-    # above are useless because timeout is too short, so just use requests.get() directly
-    sessionOpenUV = requests.Session()
 
     # Initialize BME680
     try:
@@ -130,8 +109,17 @@ def get_outdoor():
 
 def get_OpenUV_Index():
     logging.info("Fetching data from OpenUV:")
+    uv = 'U' # Set to rrdtool's definition of NaN if request fails
+    urlOpenUV = "https://api.openuv.io/api/v1/uv"
+    headersOpenUV = {"x-access-token": config.OPENUVKEY} # OpenUV.io API key
+    paramsOpenUV = {
+        "lat": config.LAT,
+        "lng": config.LON,
+        "alt": config.STA_ALT,
+        "dt": ""  # If you want to specify a datetime, you can put it here
+    }
+    sessionOpenUV = requests.Session() # Initialize session for reuse during API calls
     try:
-        uv = 'U' # Set to rrdtool's definition of NaN if request fails
         responseOpenUV = sessionOpenUV.get(urlOpenUV, headers=headersOpenUV, params=paramsOpenUV, timeout=5)
         responseOpenUV.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
