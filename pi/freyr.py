@@ -387,7 +387,7 @@ def create_graphs():
             "--right-axis-label", "hPa",
             "--right-axis", "1:0", "--right-axis-format", "%4.0lf",
             "--height", "300",
-            "--lower-limit", "996", "--upper-limit", "1022", "--rigid",
+            "--lower-limit", "998", "--upper-limit", "1018",
             "--y-grid", "1:2",
             "--units-exponent", "0",
             "DEF:indoor=./rrd/pressures.rrd:indoor:LAST",
