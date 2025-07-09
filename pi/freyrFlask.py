@@ -12,9 +12,13 @@ socketio = SocketIO(app)
 # Set up logging
 logging.basicConfig(
     handlers=[RotatingFileHandler('./log/freyrFlask.log', maxBytes=4000000, backupCount=3)],
-    level=logging.DEBUG, # Set logging level. logging.WARNING = less info
+    level=logging.WARNING, # Set logging level. logging.WARNING = less info
     format='%(asctime)s - %(levelname)s - %(message)s')
 logging.warning("Starting freyrFlask") # Throw something in the log on start just so I know everything is working
+
+# Tap into the werkzeug logger
+werkzeug_log = logging.getLogger('werkzeug')
+werkzeug_log.setLevel(logging.WARNING) # Set the logging level to WARNING or higher to reduce output
 
 def read_sqlite_database():
     # Connect to SQLite db
