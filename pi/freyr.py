@@ -120,7 +120,7 @@ def get_OpenUV_Index():
     }
     sessionOpenUV = requests.Session() # Initialize session for reuse during API calls
     try:
-        responseOpenUV = sessionOpenUV.get(urlOpenUV, headers=headersOpenUV, params=paramsOpenUV, timeout=5)
+        responseOpenUV = sessionOpenUV.get(urlOpenUV, headers=headersOpenUV, params=paramsOpenUV, timeout=7)
         responseOpenUV.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
         uv = responseOpenUV.json()['result']['uv']
@@ -252,13 +252,27 @@ def update_rrd(rrd_filename, alignedEpoch, values_string):
         if alignedEpoch > last_update:
             result = rrdtool.updatev(config.RRD_PATH + rrd_filename, values_string)
             logging.debug(f"Full result from rrdtool.updatev: {result}")
-            logging.info(f"Success! Updated {rrd_filename} with values {values_string}") #Show what went into the RRD
+            logging.info(f"Updated {rrd_filename} with values {values_string}") #Show what went into the RRD
         else:
             logging.warning(f"Skipped update for {rrd_filename}: timestamp {alignedEpoch} <= last update {last_update}")
             return
     except (rrdtool.ProgrammingError, rrdtool.OperationalError) as err:
         logging.error(f"Error updating {rrd_filename}: {err}")
         logging.error(f"Fail! Result: {result}")
+
+def update_uv(epoch):
+    # Only update UV every 30 minutes because of API rate limits
+    alignedEpoch = epoch - (epoch % 1800)  # 30-minute alignment for UV
+    logging.debug(f"30 minute aligned epoch time: {alignedEpoch}")
+    last_uv_update = rrdtool.last(config.RRD_PATH + "uv.rrd")
+    logging.debug(f"Last UV update time: {last_uv_update}")
+    if alignedEpoch > last_uv_update:
+        outdoorUV = get_OpenUV_Index()
+        update_rrd("uv.rrd", alignedEpoch, f"{alignedEpoch}:{outdoorUV}")
+    else:
+        logging.info(f"Skipping UV update: alignedEpoch {alignedEpoch} <= last_uv_update {last_uv_update}")
+        outdoorUV = 'U'  # Set to NaN if update is skipped
+    return outdoorUV
 
 def create_graphs():
     logging.info("Creating graphs...")
@@ -566,7 +580,6 @@ def main():
     # Loop parameters
     interval = config.LOOP_INTERVAL
     interval = timedelta(seconds=interval) # Convert integer into proper time format
-    loop_counter = 0
     while True: # main while loop that should run forever
         started = datetime.now() # Start timing the operation
         logging.info("~~~~~~~~~~~~~~new cycle~~~~~~~~~~~~~~~~") # Start logging cycle with a row of tildes to differentiate
@@ -585,15 +598,8 @@ def main():
         update_rrd("gas.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_gas}")
         update_rrd("pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
         update_rrd("wind.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_wind}:{outdoor_windGust}")
+        outdoorUV = update_uv(epoch) # Only update UV every 30 minutes because of API rate limits
 
-        # Only update UV every 30 loops/minutes because of API rate limits
-        if loop_counter % 30 == 0:
-            alignedEpoch = epoch - (epoch % 1800)  # 30-minute alignment for UV
-            logging.debug(f"30 minute aligned epoch time: {alignedEpoch}")
-            outdoorUV = get_OpenUV_Index()
-            update_rrd("uv.rrd", alignedEpoch, f"{alignedEpoch}:{outdoorUV}")
-
-        loop_counter += 1  # Increment loop counter
         update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
         post_WU(outdoor_c, outdoor_dew, outdoor_hum, indoor_press) # Post to Weather Underground
         logging.info("Done updating databases")
