@@ -1,6 +1,6 @@
+import config
 import time
 from datetime import datetime, timedelta
-import config
 import bme680
 import requests
 import rrdtool
@@ -80,7 +80,7 @@ def calc_dewpoint(humidity, temp_c):
 def get_outdoor():
     logging.info("Outdoor sensor data:")
     try:
-        offset = 1.0 # Sensor correction in degrees C
+        offset = 0.0 # Sensor correction in degrees C
         # Initialize variables so if request fails graphs still populate with NaN
         outdoor_c = outdoor_hum = outdoor_dew = picow_temp_c = 'U'
         responseSatellite = requests.get(config.SATELLITE, timeout=5)
