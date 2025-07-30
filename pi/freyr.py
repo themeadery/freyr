@@ -19,7 +19,7 @@ def init():
     # Set up logging
     logging.basicConfig(
         handlers=[RotatingFileHandler(config.LOG_PATH + config.LOG_FILE, maxBytes=4000000, backupCount=3)],
-        level=logging.DEBUG, # Set logging level. logging.WARNING = less info , logging.DEBUG = more info
+        level=logging.WARNING, # Set logging level. logging.WARNING = less info , logging.DEBUG = more info
         format='%(asctime)s - %(levelname)s - %(message)s')
     logging.warning("Starting freyr") # Throw something in the log on start just so I know everything is working
 
@@ -120,11 +120,13 @@ def get_OpenUV_Index():
     }
     sessionOpenUV = requests.Session() # Initialize session for reuse during API calls
     try:
-        responseOpenUV = sessionOpenUV.get(urlOpenUV, headers=headersOpenUV, params=paramsOpenUV, timeout=7)
+        responseOpenUV = sessionOpenUV.get(urlOpenUV, headers=headersOpenUV, params=paramsOpenUV, timeout=9)
         responseOpenUV.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
         uv = responseOpenUV.json()['result']['uv']
         logging.info(f"UV Index: {uv}")
+        if uv == 'U':
+            logging.error("Something bad happened. Figure out how to debug it.")
     except requests.exceptions.HTTPError as errh: # If the error is an HTTP error code, then:
         logging.error(errh) # log error code, example " - ERROR - 403 Client Error: Forbidden for url:"
         logging.error(f"Full Response: {responseOpenUV.json()}") # Show full JSON response, Expected key should be 'error':
@@ -132,22 +134,20 @@ def get_OpenUV_Index():
         logging.error(errc)
     except requests.exceptions.Timeout as errt:
         logging.error(errt)
+        logging.error("OpenUV API request timed out. Checking status URL...")
+        r = requests.get("https://api.openuv.io/api/v1/status", headers=headersOpenUV) # Check if the API is down or not responding
+        logging.error(f"OpenUV API status: {r.status_code} - {r.text}")
+        if r.json()['status']:
+            logging.error("Hmmm, the OpenUV API seems to be up, but the request timed out. Maybe try again later?")
+        else:
+            logging.error("No resonse from status URL, OpenUV API might actually be down.")
     except requests.exceptions.RequestException as err:
         logging.error(err)
     return uv
 
 def get_OWM():
     logging.info("Fetching data from OpenWeatherMap:")
-    #wind = windGust = 'U' # Set to rrdtool's definition of NaN if request fails
-    #urlOWM = "https://api.openweathermap.org/data/3.0/onecall"
     urlOWM = "https://api.openweathermap.org/data/2.5/weather"
-    """paramsOWM = {
-        "lat": config.LAT,
-        "lon": config.LON,
-        "exclude": "minutely,hourly,daily,alerts",
-        "units": "imperial",
-        "appid": config.OWMKEY
-    }"""
     paramsOWM = {
         "lat": config.LAT,
         "lon": config.LON,
@@ -158,11 +158,8 @@ def get_OWM():
         responseOWM = requests.get(urlOWM, params=paramsOWM, timeout=5)
         responseOWM.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
-        #current_data = responseOWM.json().get('current', {}) # take the 'current' key values and throw them in 'current_data'
         w = responseOWM.json().get('wind', {}) # take the 'wind' key values and throw them in 'w'
-        #wind = current_data.get('wind_speed', 'U') # if 'wind_speed' key does not exist, fallback to 'U' which is rrdtool's def of NaN
         wind = w.get('speed', 'U') # if 'wind_speed' key does not exist, fallback to 'U' which is rrdtool's def of NaN
-        #windGust = current_data.get('wind_gust', 'U') # if 'wind_gust' key does not exist, fallback to 'U' which is rrdtool's def of NaN
         windGust = w.get('gust', 'U') # if 'wind_gust' key does not exist, fallback to 'U' which is rrdtool's def of NaN
         logging.info(f"Wind: {wind} mph") # this kinda assume the key exists
         if windGust != 'U':
