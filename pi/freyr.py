@@ -110,7 +110,8 @@ def get_outdoor():
 def get_OpenUV_Index():
     logging.info("Fetching data from OpenUV:")
     uv = 'U' # Set to rrdtool's definition of NaN if request fails
-    urlOpenUV = "https://api.openuv.io/api/v1/uv"
+    # OpenUV API is unreliable
+    """urlOpenUV = "https://api.openuv.io/api/v1/uv"
     headersOpenUV = {"x-access-token": config.OPENUVKEY} # OpenUV.io API key
     paramsOpenUV = {
         "lat": config.LAT,
@@ -142,7 +143,7 @@ def get_OpenUV_Index():
         else:
             logging.error("No resonse from status URL, OpenUV API might actually be down.")
     except requests.exceptions.RequestException as err:
-        logging.error(err)
+        logging.error(err)"""
     return uv
 
 def get_OWM():
