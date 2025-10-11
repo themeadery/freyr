@@ -148,6 +148,8 @@ def get_OpenUV_Index():
 
 def get_OWM():
     logging.info("Fetching data from OpenWeatherMap:")
+    wind = 'U' # Set to rrdtool's definition of NaN if request fails
+    windGust = 'U' # Set to rrdtool's definition of NaN if request fails
     urlOWM = "https://api.openweathermap.org/data/2.5/weather"
     paramsOWM = {
         "lat": config.LAT,
@@ -159,14 +161,11 @@ def get_OWM():
         responseOWM = requests.get(urlOWM, params=paramsOWM, timeout=5)
         responseOWM.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
-        w = responseOWM.json().get('wind', {}) # take the 'wind' key values and throw them in 'w'
-        wind = w.get('speed', 'U') # if 'wind_speed' key does not exist, fallback to 'U' which is rrdtool's def of NaN
-        windGust = w.get('gust', 'U') # if 'wind_gust' key does not exist, fallback to 'U' which is rrdtool's def of NaN
-        logging.info(f"Wind: {wind} mph") # this kinda assume the key exists
-        if windGust != 'U':
-            logging.info(f"Wind Gust: {windGust} mph")
-        else:
-            logging.warning("Wind Gust data not available.") # catch/log the error I think was happening
+        w = responseOWM.json()['wind'] # take the 'wind' key values and throw them in 'w'
+        wind = w['speed'] if 'speed' in w and w['speed'] is not None else 'U'
+        windGust = w['gust'] if 'gust' in w and w['gust'] is not None else 'U'
+        logging.info(f"Wind: {wind} mph") if wind != 'U' else logging.warning("Wind data not available.")
+        logging.info(f"Gust: {windGust} mph") if windGust != 'U' else logging.warning("Gust data not available.")
     except requests.exceptions.HTTPError as errh: # If the error is an HTTP error code, then:
         logging.error(errh) # log error code, example "- ERROR - 429 Client Error: Too Many Requests for url:"
         logging.error(f"Full Response: {responseOWM.json()}") # Show full JSON response, Expected key should be "cod" "message" and "parameters"
