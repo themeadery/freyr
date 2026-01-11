@@ -146,6 +146,39 @@ def get_OpenUV_Index():
         logging.error(err)"""
     return uv
 
+def get_Open_Meteo():
+    logging.info("Fetching data from Open-Meteo:")
+    uv = 'U' # Set to rrdtool's definition of NaN if request fails
+    urlOpen_Meteo = "https://air-quality-api.open-meteo.com/v1/air-quality"
+    paramsOpen_Meteo = {
+        "latitude": config.LAT,
+        "longitude": config.LON,
+        "current": "uv_index",
+        "timezone": "auto",
+        "timeformat": "unixtime"
+        # "temporal_resolution": "native"
+    }
+    sessionOpen_Meteo = requests.Session() # Initialize session for reuse during API calls
+    try:
+        responseOpen_Meteo = sessionOpen_Meteo.get(urlOpen_Meteo, params=paramsOpen_Meteo, timeout=5)
+        responseOpen_Meteo.raise_for_status() # If error, try to catch it in except clauses below
+        # Code below here will only run if the request is successful
+        uv = responseOpen_Meteo.json()['current']['uv_index']
+        logging.info(f"UV Index: {uv}")
+        if uv == 'U':
+            logging.error("Something bad happened. Figure out how to debug it.")
+    except requests.exceptions.HTTPError as errh: # If the error is an HTTP error code, then:
+        logging.error(errh) # log error code, example " - ERROR - 403 Client Error: Forbidden for url:"
+        logging.error(f"Full Response: {responseOpen_Meteo.json()}") # Show full JSON response
+    except requests.exceptions.ConnectionError as errc:
+        logging.error(errc)
+    except requests.exceptions.Timeout as errt:
+        logging.error(errt)
+        logging.error("Open-Meteo API request timed out. Write some debug code to figure out why?")
+    except requests.exceptions.RequestException as err:
+        logging.error(err)
+    return uv
+
 def get_OWM():
     logging.info("Fetching data from OpenWeatherMap:")
     wind = 'U' # Set to rrdtool's definition of NaN if request fails
@@ -586,6 +619,7 @@ def main():
         alignedEpoch = epoch - (epoch % 60) # Align to 60 second intervals
         logging.debug(f"60 second aligned epoch time: {alignedEpoch}")
         outdoor_c, outdoor_hum, outdoor_dew, picow_temp_c = get_outdoor()
+        outdoorUV = get_Open_Meteo()
         outdoor_wind, outdoor_windGust = get_OWM()
         indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
         pi_temp_c = pi_temp()
@@ -595,7 +629,8 @@ def main():
         update_rrd("gas.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_gas}")
         update_rrd("pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
         update_rrd("wind.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_wind}:{outdoor_windGust}")
-        outdoorUV = update_uv(epoch) # Only update UV every 30 minutes because of API rate limits
+        update_rrd("uv.rrd", alignedEpoch, f"{alignedEpoch}:{outdoorUV}")
+        #outdoorUV = update_uv(epoch) # Only update UV every 30 minutes because of API rate limits
 
         update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
         post_WU(outdoor_c, outdoor_dew, outdoor_hum, indoor_press) # Post to Weather Underground

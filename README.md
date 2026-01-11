@@ -70,7 +70,7 @@ rrdtool create temperatures.rrd --step 60 DS:outdoor:GAUGE:120:-20:55 DS:indoor:
 rrdtool create humidities.rrd --step 60 DS:outdoor:GAUGE:120:0:100 DS:indoor:GAUGE:120:0:100 RRA:LAST:0.5:1:2880
 rrdtool create pressures.rrd --step 60 DS:indoor:GAUGE:120:900:1100 RRA:LAST:0.5:1:2880
 rrdtool create gas.rrd --step 60 DS:indoor:GAUGE:120:50:200000 RRA:LAST:0.5:1:2880
-rrdtool create uv.rrd --step 1800 DS:outdoor:GAUGE:3600:0:20 RRA:LAST:0.5:1:96
+rrdtool create uv.rrd --step 60 DS:outdoor:GAUGE:120:0:20 RRA:LAST:0.5:1:2880
 rrdtool create wind.rrd --step 60 DS:outdoor_wind:GAUGE:120:0:100 DS:outdoor_windGust:GAUGE:120:0:100 RRA:LAST:0.5:1:2880
 ```
 
