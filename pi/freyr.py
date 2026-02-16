@@ -11,15 +11,17 @@ from logging.handlers import RotatingFileHandler
 import sqlite3
 import signal
 import sys
+import pyboard
 
 def init():
     global connection, cursor
     global sensor
+    global pyb
 
     # Set up logging
     logging.basicConfig(
         handlers=[RotatingFileHandler(config.LOG_PATH + config.LOG_FILE, maxBytes=4000000, backupCount=3)],
-        level=logging.WARNING, # Set logging level. logging.WARNING = less info , logging.DEBUG = more info
+        level=logging.DEBUG, # Set logging level. logging.WARNING = less info , logging.INFO = more info, logging.DEBUG = most info
         format='%(asctime)s - %(levelname)s - %(message)s')
     logging.warning("Starting freyr") # Throw something in the log on start just so I know everything is working
 
@@ -57,6 +59,9 @@ def init():
     offset = -0.4 # Temperature offset in deg C. Slight compensation for heating from components on PCB, wires to sensor, etc.
     sensor.set_temp_offset(offset)
     # Done initializing BME680
+
+    # Initialize Pi Pico on USB
+    pyb = pyboard.Pyboard('/dev/ttyACM0', 115200)
 
 # Global Celsius to Fahrenheit conversion function
 def c_to_f(temp_c):
@@ -263,6 +268,48 @@ def get_indoor():
         temp_c = hum = dew = press = gas = 'U' # Set all variables to NaN if sensor data fails
         logging.error("Sensor is not ready or not heat_stable. No sensor data available. All vars set to 'U'")
         return temp_c, hum, dew, press, gas
+
+def get_tank():
+    logging.info("Getting tank sensor data:")
+    offset = 0.0 # Sensor correction in degrees C, if needed
+    temperature = 'U' # Set to rrdtool's definition of NaN if request fails
+
+    # Voltage Divider
+    Vin = 3.3
+    Ro = 10000  # 10k Resistor
+
+    # Steinhart Constants
+    A = 0.001129148
+    B = 0.000234125
+    C = 0.0000000876741
+
+    if pyb:
+        pyb.enter_raw_repl()
+        pyb.exec('from machine import ADC')
+        pyb.exec('thermistor = ADC(26)')
+        n = 64 # Number of samples
+        samples = [] # Create an empty list for all 64 samples
+        for _ in range(n):
+            pyb.exec('raw_adc = thermistor.read_u16()')
+            response = int(pyb.exec('print(raw_adc)').decode('utf-8').strip())
+            samples.append(response)
+        pyb.exit_raw_repl()
+    else:
+        logging.error("Pyboard connection not initialized. Cannot read tank sensor data.")
+
+    if samples:
+        logging.debug(f"Raw ADC samples: {samples}")
+        average = sum(samples) / len(samples)
+        logging.debug(f"Raw ADC value average: {average}")
+        Vout = (3.3/65535) * average
+        Rt = (Vout * Ro) / (Vin - Vout) # Calculate Resistance
+        TempK = 1 / (A + (B * math.log(Rt)) + C * math.pow(math.log(Rt), 3)) # Steinhart - Hart Equation
+        TempC = (TempK - 273.15) + offset # Convert from Kelvin to Celsius and apply offset correction
+        temperature = TempC
+        logging.info(f"Tank Temperature: {temperature} °C")
+    else:
+        logging.error("Something went wrong. No samples to process.")
+    return temperature
 
 # Pi Zero W Temperature function
 def pi_temp():
@@ -622,6 +669,7 @@ def main():
         outdoorUV = get_Open_Meteo()
         outdoor_wind, outdoor_windGust = get_OWM()
         indoor_c, indoor_hum, indoor_dew, indoor_press, indoor_gas = get_indoor()
+        tank_c = get_tank()
         pi_temp_c = pi_temp()
         logging.info("Updating databases...")
         update_rrd("temperatures.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
@@ -630,7 +678,6 @@ def main():
         update_rrd("pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
         update_rrd("wind.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_wind}:{outdoor_windGust}")
         update_rrd("uv.rrd", alignedEpoch, f"{alignedEpoch}:{outdoorUV}")
-        #outdoorUV = update_uv(epoch) # Only update UV every 30 minutes because of API rate limits
 
         update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
         post_WU(outdoor_c, outdoor_dew, outdoor_hum, indoor_press) # Post to Weather Underground
