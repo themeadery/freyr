@@ -394,6 +394,9 @@ def create_graphs():
             "DEF:indoorMin=./rrd/temperatures.rrd:indoor:MIN",
             "DEF:outdoor_dewMin=./rrd/temperatures.rrd:outdoor_dew:MIN",
             "DEF:indoor_dewMin=./rrd/temperatures.rrd:indoor_dew:MIN",
+            "DEF:tank=./rrd/temperatures.rrd:tank:LAST",
+            "DEF:tankMax=./rrd/temperatures.rrd:tank:MAX",
+            "DEF:tankMin=./rrd/temperatures.rrd:tank:MIN",
             "CDEF:outdoor-f=outdoor,1.8,*,32,+",
             "CDEF:indoor-f=indoor,1.8,*,32,+",
             "CDEF:outdoor_dew-f=outdoor_dew,1.8,*,32,+",
@@ -406,6 +409,9 @@ def create_graphs():
             "CDEF:indoorMin-f=indoorMin,1.8,*,32,+",
             "CDEF:outdoor_dewMin-f=outdoor_dewMin,1.8,*,32,+",
             "CDEF:indoor_dewMin-f=indoor_dewMin,1.8,*,32,+",
+            "CDEF:tank-f=tank,1.8,*,32,+",
+            "CDEF:tankMax-f=tankMax,1.8,*,32,+",
+            "CDEF:tankMin-f=tankMin,1.8,*,32,+",
             "LINE1:outdoor#ff0000:Outdoor         ",
             "GPRINT:outdoor:LAST:Cur\: %5.2lf °C",
             "GPRINT:outdoor-f:LAST: %5.1lf °F",
@@ -433,7 +439,14 @@ def create_graphs():
             "GPRINT:indoor_dewMax:MAX:Max\: %5.2lf °C",
             "GPRINT:indoor_dewMax-f:MAX: %5.1lf °F",
             "GPRINT:indoor_dewMin:MIN:Min\: %5.2lf °C",
-            "GPRINT:indoor_dewMin-f:MIN: %5.1lf °F\l"
+            "GPRINT:indoor_dewMin-f:MIN: %5.1lf °F\l",
+            "LINE1:tank#00ff00:Tank            ",
+            "GPRINT:tank:LAST:Cur\: %5.2lf °C",
+            "GPRINT:tank-f:LAST: %5.1lf °F",
+            "GPRINT:tankMax:MAX:Max\: %5.2lf °C",
+            "GPRINT:tankMax-f:MAX: %5.1lf °F",
+            "GPRINT:tankMin:MIN:Min\: %5.2lf °C",
+            "GPRINT:tankMin-f:MIN: %5.1lf °F\l"
         )
     except (rrdtool.ProgrammingError, rrdtool.OperationalError) as err:
         logging.error(f"Error creating graph: {err}")
@@ -610,14 +623,14 @@ def create_graphs():
     logging.info("Done creating graphs")
 
 # Updates the SQLite database with the provided data
-def update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c):
+def update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c, tank_c):
     try:
         logging.info(f"Updating SQLite database")
         #epoch = round(started.timestamp()) # convert datetime to unix epoch time before INSERT, instead of during INSERT, in the SCHEMA or in SELECT later on
         logging.debug(f"Epoch time: {epoch}")
         cursor.execute(
-            "INSERT INTO data VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
+            "INSERT INTO data VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c, tank_c)
         )
         connection.commit()
         logging.info(f"SQLite database updated successfully.")
@@ -672,19 +685,17 @@ def main():
         tank_c = get_tank()
         pi_temp_c = pi_temp()
         logging.info("Updating databases...")
-        update_rrd("temperatures.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}")
+        update_rrd("temperatures.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_c}:{indoor_c}:{pi_temp_c}:{picow_temp_c}:{outdoor_dew}:{indoor_dew}:{tank_c}")
         update_rrd("humidities.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_hum}:{indoor_hum}")
         update_rrd("gas.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_gas}")
         update_rrd("pressures.rrd", alignedEpoch, f"{alignedEpoch}:{indoor_press}")
         update_rrd("wind.rrd", alignedEpoch, f"{alignedEpoch}:{outdoor_wind}:{outdoor_windGust}")
         update_rrd("uv.rrd", alignedEpoch, f"{alignedEpoch}:{outdoorUV}")
-
-        update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c)
+        update_sqlite_database(started, epoch, outdoor_c, outdoor_dew, outdoor_hum, indoor_c, indoor_dew, indoor_hum, indoor_press, outdoorUV, outdoor_wind, outdoor_windGust, indoor_gas, pi_temp_c, picow_temp_c, tank_c)
         post_WU(outdoor_c, outdoor_dew, outdoor_hum, indoor_press) # Post to Weather Underground
         logging.info("Done updating databases")
         create_graphs()
         notify_flask()
-
         ended = datetime.now() # Stop timing the operation
         loop_time = (ended - started).seconds
         logging.info(f"Loop took {loop_time} seconds")
