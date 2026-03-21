@@ -12,6 +12,7 @@ import sqlite3
 import signal
 import sys
 import pyboard
+import numpy as np
 
 def init():
     global connection, cursor
@@ -21,7 +22,7 @@ def init():
     # Set up logging
     logging.basicConfig(
         handlers=[RotatingFileHandler(config.LOG_PATH + config.LOG_FILE, maxBytes=4000000, backupCount=3)],
-        level=logging.DEBUG, # Set logging level. logging.WARNING = less info , logging.INFO = more info, logging.DEBUG = most info
+        level=logging.DEBUG, # Set logging level. logging.WARNING = less info (default for prod), logging.INFO = more info, logging.DEBUG = most info
         format='%(asctime)s - %(levelname)s - %(message)s')
     logging.warning("Starting freyr") # Throw something in the log on start just so I know everything is working
 
@@ -81,17 +82,35 @@ def calc_dewpoint(humidity, temp_c):
     alpha = math.log(humidity/100.0) + ((a * temp_c) / (b + temp_c))
     return (b * alpha) / (a - alpha)
 
+def correction_factor(temp_c):
+    # 1. Define calibration points
+    x_cal = np.array([19.77, 25.17, 33.90, 37.02])  # sensor readings
+    y_cal = np.array([19.9, 25.6, 34.6, 38.0])  # true values
+
+    # 2. Fit a 2nd-degree polynomial (quadratic)
+    # The output 'coeffs' will be [a, b, c] for y = ax^2 + bx + c
+    coeffs = np.polyfit(x_cal, y_cal, 2)
+
+    # 3. Create a polynomial function from the coefficients
+    calibration_curve = np.poly1d(coeffs)
+
+    # 4. Use the calibration curve to correct the outdoor temperature
+    corrected_temp_c = calibration_curve(temp_c)
+    logging.debug(f"Corrected temperature: {corrected_temp_c} °C")
+    return corrected_temp_c
+
 # Outdoor Pi Pico W + Si7021 sensor function
 def get_outdoor():
     logging.info("Outdoor sensor data:")
     try:
-        offset = 0.0 # Sensor correction in degrees C
         # Initialize variables so if request fails graphs still populate with NaN
         outdoor_c = outdoor_hum = outdoor_dew = picow_temp_c = 'U'
         responseSatellite = requests.get(config.SATELLITE, timeout=5)
         responseSatellite.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
-        outdoor_c = responseSatellite.json()['temperature'] + offset
+        outdoor_c = responseSatellite.json()['temperature']
+        logging.debug(f"Raw outdoor temperature from satellite: {outdoor_c} °C")
+        outdoor_c = correction_factor(outdoor_c) # Apply correction factor to raw outdoor temperature
         outdoor_f = c_to_f(outdoor_c)
         outdoor_hum = responseSatellite.json()['humidity']
         outdoor_dew = calc_dewpoint(outdoor_hum, outdoor_c)
