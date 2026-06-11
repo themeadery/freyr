@@ -62,7 +62,12 @@ def init():
     # Done initializing BME680
 
     # Initialize Pi Pico on USB
-    pyb = pyboard.Pyboard('/dev/ttyACM0', 115200)
+    try:
+        pyb = pyboard.Pyboard('/dev/ttyACM0', 115200)
+        logging.info("Connected to Pyboard on /dev/ttyACM0")
+    except (OSError, IOError, Exception) as e:
+        pyb = None
+        logging.warning(f"Pyboard not available at /dev/ttyACM0: {e}. Tank sensor disabled.")
 
 # Global Celsius to Fahrenheit conversion function
 def c_to_f(temp_c):
@@ -315,6 +320,7 @@ def get_tank():
         pyb.exit_raw_repl()
     else:
         logging.error("Pyboard connection not initialized. Cannot read tank sensor data.")
+        return temperature
 
     if samples:
         logging.debug(f"Raw ADC samples: {samples}")
