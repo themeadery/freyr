@@ -89,8 +89,8 @@ def calc_dewpoint(humidity, temp_c):
 
 def correction_factor(temp_c):
     # 1. Define calibration points
-    x_cal = np.array([19.77, 25.17, 33.90, 37.02])  # sensor readings
-    y_cal = np.array([19.9, 25.6, 34.6, 38.0])  # true values
+    x_cal = np.array([19.77, 25.17, 33.90, 37.02, 44.58])  # sensor readings
+    y_cal = np.array([19.9, 25.6, 34.6, 38.0, 46.0])  # true values
 
     # 2. Fit a 2nd-degree polynomial (quadratic)
     # The output 'coeffs' will be [a, b, c] for y = ax^2 + bx + c
@@ -104,6 +104,19 @@ def correction_factor(temp_c):
     logging.debug(f"Corrected temperature: {corrected_temp_c} °C")
     return corrected_temp_c
 
+def compensate_rh_for_temp(raw_rh, raw_temp_c, ambient_temp_c):
+    # Calculate dewpoint from raw sensor values
+    dewpoint = calc_dewpoint(raw_rh, raw_temp_c)
+
+    # Re-calculate relative humidity at true ambient temperature
+    a = 17.625
+    b = 243.04
+    alpha_dp = (a * dewpoint) / (b + dewpoint)
+    alpha_temp = (a * ambient_temp_c) / (b + ambient_temp_c)
+    compensated_rh = 100.0 * math.exp(alpha_dp - alpha_temp)
+
+    return max(0.0, min(100.0, compensated_rh))
+
 # Outdoor Pi Pico W + Si7021 sensor function
 def get_outdoor():
     logging.info("Outdoor sensor data:")
@@ -113,12 +126,18 @@ def get_outdoor():
         responseSatellite = requests.get(config.SATELLITE, timeout=5)
         responseSatellite.raise_for_status() # If error, try to catch it in except clauses below
         # Code below here will only run if the request is successful
-        outdoor_c = responseSatellite.json()['temperature']
-        logging.debug(f"Raw outdoor temperature from satellite: {outdoor_c} °C")
-        outdoor_c = correction_factor(outdoor_c) # Apply correction factor to raw outdoor temperature
+        # Get raw sensor values from Pi Pico W + Si7021 sensor
+        raw_outdoor_c = responseSatellite.json()['temperature']
+        logging.debug(f"Raw outdoor temperature from satellite: {raw_outdoor_c} °C")
+        raw_outdoor_hum = responseSatellite.json()['humidity']
+        logging.debug(f"Raw outdoor humidity from satellite: {raw_outdoor_hum} %")
+        # Apply corrections
+        outdoor_c = correction_factor(raw_outdoor_c)
         outdoor_f = c_to_f(outdoor_c)
-        outdoor_hum = responseSatellite.json()['humidity']
+        outdoor_hum = compensate_rh_for_temp(raw_outdoor_hum, raw_outdoor_c, outdoor_c)
+        # Calculate dewpoint from corrected temperature and compensated humidity
         outdoor_dew = calc_dewpoint(outdoor_hum, outdoor_c)
+        # Do the rest
         picow_temp_c = responseSatellite.json()['mcu']
         picow_temp_f = c_to_f(picow_temp_c)
         logging.info(f"Temperature: {outdoor_c} °C | {outdoor_f} °F")
